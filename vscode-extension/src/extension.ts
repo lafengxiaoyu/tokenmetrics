@@ -7284,7 +7284,7 @@ private computeFallbackDailyRollup(
 			this.analysisPanel.reveal(vscode.ViewColumn.One, false);
 			return;
 		}
-		this.analysisPanel = vscode.window.createWebviewPanel(
+		const panel = this.analysisPanel = vscode.window.createWebviewPanel(
 			'copilotUsageAnalysis', 'GitHub Copilot Insights',
 			{ viewColumn: vscode.ViewColumn.One, preserveFocus: true },
 			{ enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview')] }
@@ -7293,15 +7293,17 @@ private computeFallbackDailyRollup(
 		this.analysisMessageReplay.markNotReady();
 		this._analysisPanelSeq++;
 		this.log(`✅ Usage Analysis dashboard created successfully (panel #${this._analysisPanelSeq})`);
-		this.analysisPanel.webview.onDidReceiveMessage(async (message) => {
+		panel.webview.onDidReceiveMessage(async (message) => {
 			if (this.handleLocalViewRegressionMessage(message)) { return; }
 			if (await this.dispatchSharedCommand(message)) { return; }
 			await this.handleAnalysisMessage(message);
 		});
-		this.analysisPanel.webview.html = this.getUsageAnalysisHtml(this.analysisPanel.webview, this.lastUsageAnalysisStats ?? null);
-		if (!this.lastUsageAnalysisStats) { void this.loadAnalysisStatsInBackground(this.analysisPanel); }
-		this.analysisPanel.onDidDispose(() => {
+		panel.webview.html = this.getUsageAnalysisHtml(panel.webview, this.lastUsageAnalysisStats ?? null);
+		if (!this.lastUsageAnalysisStats) { void this.loadAnalysisStatsInBackground(panel); }
+		panel.onDidDispose(() => {
 			this.log('📊 Usage Analysis dashboard closed');
+			// A delayed dispose event from an older panel must not clear a newer panel.
+			if (this.analysisPanel !== panel) { return; }
 			this.analysisPanel = undefined;
 			this.analysisWebviewReady = false;
 			this.analysisMessageReplay.markNotReady();
