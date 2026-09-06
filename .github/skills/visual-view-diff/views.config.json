@@ -68,6 +68,13 @@
       "fixture": "usage.json"
     },
     {
+      "id": "copilot-insights",
+      "title": "GitHub Copilot Insights",
+      "bundle": "copilot-insights",
+      "global": "__INITIAL_USAGE__",
+      "fixture": "copilot-insights.json"
+    },
+    {
       "id": "efficiency",
       "title": "Efficiency",
       "bundle": "efficiency",

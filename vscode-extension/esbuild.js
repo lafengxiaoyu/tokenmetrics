@@ -55,6 +55,7 @@ async function main() {
 			details: 'src/webview/details/main.ts',
 			chart: 'src/webview/chart/main.ts',
 			usage: 'src/webview/usage/main.ts',
+			'copilot-insights': 'src/webview/copilot-insights/main.ts',
 			diagnostics: 'src/webview/diagnostics/main.ts',
 			logviewer: 'src/webview/logviewer/main.ts',
 			maturity: 'src/webview/maturity/main.ts',

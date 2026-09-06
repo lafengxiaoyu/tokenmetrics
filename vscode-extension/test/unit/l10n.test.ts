@@ -24,7 +24,7 @@ test('l10n: VS Code bundle args are passed through', () => {
 test('l10n: resolves English from the inlined package.nls.json when VS Code returns the raw key', () => {
 	const value = t('statusBar.loadingText');
 	assert.notEqual(value, 'statusBar.loadingText');
-	assert.ok(value.includes('AI Fluency'), `expected English text, got: ${value}`);
+	assert.ok(value.includes('Copilot Insights'), `expected English text, got: ${value}`);
 });
 
 test('l10n: inlined fallback formats {0} placeholders', () => {
@@ -67,7 +67,7 @@ test('l10n: unknown key returns the key itself and warns once', () => {
 // (PR #1876 follow-up) — guards against raw keys resurfacing in the UI.
 test('l10n: dialog button and insights status bar keys resolve in English', () => {
 	const expected: Record<string, string> = {
-		'statusBar.nameInsights': 'AI Engineering Fluency — Insights',
+		'statusBar.nameInsights': 'GitHub Copilot Insights — New insight',
 		'button.openSettings': 'Open Settings',
 		'button.openUsageAnalysis': 'Open Usage Analysis',
 		'button.openInsightsTab': 'Open Insights tab',
@@ -83,7 +83,7 @@ test('l10n: dialog button and insights status bar keys resolve in zh-cn', () => 
 	mock.setLanguage('zh-cn');
 	try {
 		const expected: Record<string, string> = {
-			'statusBar.nameInsights': 'AI 工程熟练度 —— 洞察',
+			'statusBar.nameInsights': 'GitHub Copilot 洞察 —— 新建议',
 			'button.openSettings': '打开设置',
 			'button.openUsageAnalysis': '打开使用分析',
 			'button.openInsightsTab': '打开洞察标签页',
@@ -121,6 +121,25 @@ test('l10n: clipboard-failure keys resolve in zh-cn', () => {
 		for (const [key, chinese] of Object.entries(expected)) {
 			assert.equal(t(key), chinese, `zh-cn value for ${key}`);
 		}
+	} finally {
+		mock.setLanguage('en');
+	}
+});
+
+test('l10n: Copilot Insights dashboard keys resolve in English and zh-cn', () => {
+	const english: Record<string, string> = {
+		'copilotInsights.title': 'GitHub Copilot Insights',
+		'copilotInsights.insightsTitle': 'Insights for you',
+		'copilotInsights.scopeNote': 'VS Code and Copilot CLI session logs only. No cloud or team sync.',
+	};
+	for (const [key, value] of Object.entries(english)) {
+		assert.equal(t(key), value, `English value for ${key}`);
+	}
+
+	mock.setLanguage('zh-cn');
+	try {
+		assert.equal(t('copilotInsights.title'), 'GitHub Copilot 洞察');
+		assert.equal(t('copilotInsights.insightsTitle'), '为您生成的洞察');
 	} finally {
 		mock.setLanguage('en');
 	}

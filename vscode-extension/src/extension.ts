@@ -1383,16 +1383,12 @@ class CopilotTokenTracker implements vscode.Disposable {
 		this.context = context;
 		this.initializeAdapters(extensionUri, context);
 		this.initializeOutputChannel(context);
-		this._cacheLoadPromise = this.cacheManager.loadCacheFromStorage().then(async () => {
-			await this.queueMissingOpenCodeDbSessionsFromCache();
-		}).finally(() => {
+		this._cacheLoadPromise = this.cacheManager.loadCacheFromStorage().finally(() => {
 			this._cacheLoadPromise = undefined;
 		});
 		// Best-effort housekeeping: reclaim cache/lock files orphaned by previous
 		// Extension Development Host sessions. Never blocks activation.
 		void this.cacheManager.cleanupStaleDevCacheFiles().catch((e) => this.warn(`Stale dev cache cleanup failed: ${e}`));
-		this._sessionRestorePromise = this.restoreGitHubSession();
-		this.setupGitHubAuthListener(context);
 		this.sessionDiscovery.checkCopilotExtension();
 		this.initializeStatusBar();
 		this.setupConfigurationListener(context);
@@ -1420,7 +1416,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 			estimateTokens: (t, m) => this.estimateTokensFromText(t, m),
 			isMcpTool: (t) => this.isMcpTool(t),
 			extractMcpServerName: (t) => this.extractMcpServerName(t),
-		});
+		}).filter((adapter) => adapter.id === 'copilotchat' || adapter.id === 'copilotcli');
 		this.cacheManager = new CacheManager(context, { log: (m: string) => this.log(m), warn: (m: string) => this.warn(m), error: (m: string) => this.error(m) }, CopilotTokenTracker.CACHE_VERSION);
 		this.hookManager = new HookManager(context.globalState, (msg) => this.log(msg));
 		this.sessionDiscovery = new SessionDiscovery({
@@ -1428,7 +1424,6 @@ class CopilotTokenTracker implements vscode.Disposable {
 			warn: (m) => this.warn(m),
 			error: (m, e) => this.error(m, e),
 			ecosystems: this.ecosystems,
-			windsurf: this.windsurf,
 			sampleDataDirectoryOverride: () => this.localRegressionSampleDataDir,
 		});
 	}
@@ -1519,7 +1514,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 		this.statusBarItem.name = l10n.t("statusBar.name");
 		this.setStatusBarText(l10n.t("statusBar.loadingText"));
 		this.statusBarItem.tooltip = l10n.t("statusBar.tooltip");
-		this.statusBarItem.command = 'aiEngineeringFluency.showDetails';
+		this.statusBarItem.command = 'aiEngineeringFluency.showUsageAnalysis';
 		this.statusBarItem.show();
 
 		// Separate insights badge — hidden until there are new insights
@@ -1567,11 +1562,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 		setTimeout(async () => {
 			try {
 				await this.updateTokenStats();
-				this.startBackendSyncAfterInitialAnalysis();
 				await this.checkAndShowOnboarding();
-				await this.showFluencyScoreNewsBanner();
-				await this.showEfficiencyTabNewsBanner();
-				await this.showUnknownMcpToolsBanner();
 			} catch (error) {
 				this.error('Error in initial update:', error);
 			}
@@ -1630,16 +1621,16 @@ class CopilotTokenTracker implements vscode.Disposable {
 		switch (action) {
 			case 'welcome': {
 				const message = l10n.t('onboarding.welcome.message');
-				const openFluencyScore = l10n.t('onboarding.welcome.openFluencyScore');
+				const openInsights = l10n.t('onboarding.welcome.openFluencyScore');
 				const learnMore = l10n.t('onboarding.welcome.learnMore');
 				const choice = await vscode.window.showInformationMessage(
 					message,
-					openFluencyScore,
+					openInsights,
 					learnMore,
 				);
 				await this.context.globalState.update('hasSeenOnboarding', true);
-				if (choice === openFluencyScore) {
-					await this.showMaturity();
+				if (choice === openInsights) {
+					await this.showUsageAnalysis();
 				} else if (choice === learnMore) {
 					await vscode.env.openExternal(vscode.Uri.parse('https://github.com/rajbos/ai-engineering-fluency#supported-editors'));
 				}
@@ -2780,16 +2771,6 @@ class CopilotTokenTracker implements vscode.Disposable {
 		catch (err) { this.warn(`Failed to acquire refresh lock, proceeding as leader: ${err}`); isLeader = true; }
 		this.startRefreshHeartbeat(isLeader);
 
-		// Piggyback the once-daily background worktree scan on the same leader election: only
-		// the window that won this refresh's leader lock may start it, and it runs detached
-		// (drip-throttled, can take far longer than this refresh cycle) so it never blocks it.
-		// The hourly cloud-agent snapshot refresh rides along for the same reason: it is leader-only
-		// GitHub API work that must not hold up the parse, and this also gives it a run at startup.
-		if (isLeader) {
-			void this.maybeStartBackgroundWorktreeScan();
-			void this.maybeRefreshAgentSessions();
-		}
-
 		try {
 			return await this._runRefreshCore(silent, isLeader);
 		} catch (error) {
@@ -2840,18 +2821,16 @@ class CopilotTokenTracker implements vscode.Disposable {
 		const { stats: detailedStats, dailyStats } = await this.calculateDetailedStats(undefined, preloaded);
 		this.lastDailyStats = dailyStats;
 		this.mergeIntoFullDailyStats(dailyStats);
+		this.lastDetailedStats = detailedStats;
 
 		this.updateStatusBarAndTooltip(detailedStats);
 
 		this.updateDetailsPanelIfOpen(detailedStats, silent);
 		this.updateChartPanelIfOpen(silent);
 		await this.updateAnalysisPanelIfOpen(silent, preloaded);
-		await this.computeAndUploadFluencyScore(silent, preloaded);
-		this.updateEnvironmentalPanelIfOpen(detailedStats, silent);
 		await this.evaluateAndSurfaceInsights();
 
 		this.log(`Updated stats - Today: ${detailedStats.today.tokens}, Last 30 Days: ${detailedStats.last30Days.tokens}`);
-		this.lastDetailedStats = detailedStats;
 
 		this.persistRefreshResult(isLeader);
 
@@ -7306,7 +7285,7 @@ private computeFallbackDailyRollup(
 			return;
 		}
 		this.analysisPanel = vscode.window.createWebviewPanel(
-			'copilotUsageAnalysis', 'AI Usage Analysis',
+			'copilotUsageAnalysis', 'GitHub Copilot Insights',
 			{ viewColumn: vscode.ViewColumn.One, preserveFocus: true },
 			{ enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview')] }
 		);
@@ -7532,6 +7511,11 @@ private computeFallbackDailyRollup(
 			currentWorkspacePaths: workspacePaths,
 			todaySessions: analysisStats.todaySessions || [],
 			insights: this.buildCurrentInsights(analysisStats),
+			tokenStats: this.lastDetailedStats ? {
+				today: this.lastDetailedStats.today,
+				last30Days: this.lastDetailedStats.last30Days,
+			} : null,
+			dailyStats: this.lastDailyStats ?? [],
 			correctionReport: analysisStats.correctionReport ?? null,
 			repeatedTasks: analysisStats.repeatedTasks ?? null,
 			curationAnalysis: analysisStats.curationAnalysis ?? null,
@@ -11768,6 +11752,11 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
       use24HourTime: this.getUse24HourTimeSetting(),
       hideAutomaticToolCalls: this.getHideAutomaticToolCallsSetting(),
       insights: this.buildCurrentInsights(stats),
+      tokenStats: this.lastDetailedStats ? {
+        today: this.lastDetailedStats.today,
+        last30Days: this.lastDetailedStats.last30Days,
+      } : null,
+      dailyStats: this.lastDailyStats ?? [],
       curationAnalysis: stats.curationAnalysis ?? null,
       sessionColumnSettings,
       copilotApiBalance: this._buildCopilotApiBalance(),
@@ -11784,7 +11773,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
   ): string {
     const nonce = getNonce();
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "usage.js"),
+      vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "copilot-insights.js"),
     );
 
     const detectedLocale = this._detectUsageAnalysisLocale(stats);
@@ -11797,7 +11786,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
 			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 			${buildCspMeta(webview, nonce)}
 			${getCodiconStylesheetTag(webview, this.extensionUri)}
-			<title>Usage Analysis</title>
+			<title>GitHub Copilot Insights</title>
 		</head>
 		<body>
 			<div id="root"></div>

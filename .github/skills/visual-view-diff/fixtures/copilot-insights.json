@@ -1,0 +1,120 @@
+{
+  "today": {
+    "sessions": 6,
+    "toolCalls": {
+      "total": 34,
+      "byTool": {
+        "read_file": 12,
+        "run_in_terminal": 9,
+        "apply_patch": 7,
+        "grep_search": 6
+      }
+    },
+    "modeUsage": {
+      "ask": 5,
+      "edit": 3,
+      "agent": 9,
+      "plan": 2,
+      "customAgent": 0,
+      "cli": 2
+    },
+    "contextReferences": {}
+  },
+  "last30Days": {
+    "sessions": 48,
+    "toolCalls": {
+      "total": 386,
+      "byTool": {
+        "read_file": 121,
+        "run_in_terminal": 86,
+        "apply_patch": 72,
+        "grep_search": 61,
+        "semantic_search": 46
+      }
+    },
+    "modeUsage": {
+      "ask": 48,
+      "edit": 31,
+      "agent": 76,
+      "plan": 14,
+      "customAgent": 8,
+      "cli": 19
+    },
+    "contextReferences": {}
+  },
+  "tokenStats": {
+    "today": {
+      "tokens": 184500,
+      "actualTokens": 152300,
+      "estimatedTokens": 32200
+    },
+    "last30Days": {
+      "tokens": 2417800,
+      "actualTokens": 1984200,
+      "estimatedTokens": 433600
+    }
+  },
+  "dailyStats": [
+    { "date": "2026-08-16", "tokens": 52000, "sessions": 2, "interactions": 8 },
+    { "date": "2026-08-17", "tokens": 76000, "sessions": 3, "interactions": 11 },
+    { "date": "2026-08-18", "tokens": 61000, "sessions": 2, "interactions": 9 },
+    { "date": "2026-08-19", "tokens": 105000, "sessions": 4, "interactions": 16 },
+    { "date": "2026-08-20", "tokens": 88000, "sessions": 3, "interactions": 13 },
+    { "date": "2026-08-21", "tokens": 124000, "sessions": 4, "interactions": 19 },
+    { "date": "2026-08-22", "tokens": 93000, "sessions": 3, "interactions": 15 },
+    { "date": "2026-08-23", "tokens": 47000, "sessions": 2, "interactions": 7 },
+    { "date": "2026-08-24", "tokens": 131000, "sessions": 4, "interactions": 18 },
+    { "date": "2026-08-25", "tokens": 99000, "sessions": 3, "interactions": 14 },
+    { "date": "2026-08-26", "tokens": 142000, "sessions": 5, "interactions": 22 },
+    { "date": "2026-08-27", "tokens": 68000, "sessions": 2, "interactions": 10 },
+    { "date": "2026-08-28", "tokens": 117000, "sessions": 4, "interactions": 17 },
+    { "date": "2026-08-29", "tokens": 73000, "sessions": 2, "interactions": 9 },
+    { "date": "2026-08-30", "tokens": 154000, "sessions": 5, "interactions": 24 },
+    { "date": "2026-08-31", "tokens": 82000, "sessions": 3, "interactions": 12 },
+    { "date": "2026-09-01", "tokens": 138000, "sessions": 4, "interactions": 20 },
+    { "date": "2026-09-02", "tokens": 91000, "sessions": 3, "interactions": 13 },
+    { "date": "2026-09-03", "tokens": 163000, "sessions": 5, "interactions": 25 },
+    { "date": "2026-09-04", "tokens": 121000, "sessions": 4, "interactions": 18 },
+    { "date": "2026-09-05", "tokens": 148000, "sessions": 4, "interactions": 21 },
+    { "date": "2026-09-06", "tokens": 184500, "sessions": 6, "interactions": 21 }
+  ],
+  "recentSessions": {
+    "last30": [
+      { "title": "Refactor authentication middleware", "filePath": "/sessions/auth.jsonl", "interactions": 18, "toolCalls": 42, "totalTokens": 312400, "editor": "VS Code", "lastActivity": "2026-09-06T14:30:00.000Z" },
+      { "title": "Debug checkout race condition", "filePath": "/sessions/checkout.jsonl", "interactions": 14, "toolCalls": 31, "totalTokens": 248100, "editor": "VS Code", "lastActivity": "2026-09-05T11:20:00.000Z" },
+      { "title": "Add integration test coverage", "filePath": "/sessions/tests.jsonl", "interactions": 12, "toolCalls": 28, "totalTokens": 196300, "editor": "Copilot CLI", "lastActivity": "2026-09-04T09:15:00.000Z" },
+      { "title": "Review database migration", "filePath": "/sessions/migration.jsonl", "interactions": 9, "toolCalls": 17, "totalTokens": 142800, "editor": "VS Code", "lastActivity": "2026-09-03T16:45:00.000Z" }
+    ]
+  },
+  "todaySessions": [
+    { "title": "Refactor authentication middleware", "filePath": "/sessions/auth.jsonl", "interactions": 18, "toolCalls": 42, "totalTokens": 184500, "editor": "VS Code", "lastActivity": "2026-09-06T14:30:00.000Z" }
+  ],
+  "insights": [
+    {
+      "id": "context-opportunity",
+      "category": "Context",
+      "severity": "opportunity",
+      "title": "Repository context is underused",
+      "body": "Only a small share of your recent requests referenced workspace files. Add the relevant files before asking repository-specific questions.",
+      "status": "new"
+    },
+    {
+      "id": "agent-strength",
+      "category": "Workflow",
+      "severity": "celebration",
+      "title": "Agent mode is part of your regular workflow",
+      "body": "Agent mode is your most-used Copilot workflow. It is especially common in sessions with multiple tool calls.",
+      "status": "new"
+    },
+    {
+      "id": "session-health",
+      "category": "Session health",
+      "severity": "tip",
+      "title": "A few sessions are becoming long",
+      "body": "Four recent sessions crossed the long-session threshold. Starting a focused session can make the working context easier to manage.",
+      "status": "seen"
+    }
+  ],
+  "locale": "en-US",
+  "lastUpdated": "2026-09-06T14:30:00.000Z"
+}
