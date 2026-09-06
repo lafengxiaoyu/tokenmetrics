@@ -2,18 +2,17 @@
 
 GitHub Copilot Insights is a focused, local-first VS Code extension for understanding how you use GitHub Copilot. It turns local Copilot Chat and Copilot CLI session metadata into a small set of useful metrics and practical recommendations.
 
-This branch is a presentation-focused MVP derived from AI Engineering Fluency. It deliberately removes the cloud, team, Azure, multi-editor, cost, environmental-impact, and fluency-score surfaces from the user experience.
+This branch is a presentation-focused MVP derived from AI Engineering Fluency. It keeps the existing local analysis pages while narrowing session discovery to GitHub Copilot only. Cloud synchronization, team configuration, Azure setup, and non-Copilot assistants are not exposed.
 
-## What the dashboard shows
+## Included pages
 
-- Sessions, interactions, tokens, and tool calls for today or the last 30 days
-- Three prioritized insights based on recent Copilot activity
-- A daily token-activity trend
-- The Copilot modes you use most
-- Your most frequently used tools
-- Recent local sessions that can be opened for more detail
+- Usage Analysis with activity, sessions, tools, workspace health, worktrees, insights, and corrections
+- Token details and daily charts
+- Fluency Score and its scoring guide
+- Efficiency and environmental views
+- Diagnostic reporting
 
-The primary value is not another collection of charts. The dashboard answers two questions quickly: **How am I using Copilot?** and **What should I try next?**
+The primary dashboard keeps its internal tabs in one VS Code editor panel. Reopening it reveals the existing panel instead of creating duplicate editor tabs.
 
 ## Data sources and privacy
 

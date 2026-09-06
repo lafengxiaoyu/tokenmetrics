@@ -811,10 +811,8 @@ const MODE_BAR_CONFIGS: readonly ModeBarConfig[] = [
 { label: '\u{1F916} Agent Mode',  key: 'agent',       gradient: 'linear-gradient(90deg, #7c3aed, #a855f7)' },
 { label: '\u{1F4CB} Plan Mode',   key: 'plan',        gradient: 'linear-gradient(90deg, #f59e0b, #fbbf24)' },
 { label: '\u26A1 Custom Agent',   key: 'customAgent', gradient: 'linear-gradient(90deg, #ec4899, #f472b6)' },
-{ label: '\u{1F5A5}\uFE0F CLI',   key: 'cli',         gradient: 'linear-gradient(90deg, #06b6d4, #22d3ee)' },
+{ label: '\u{1F5A5}\uFE0F Copilot CLI', key: 'cli',   gradient: 'linear-gradient(90deg, #06b6d4, #22d3ee)' },
 { label: '\u2728 Copilot App',    key: 'cliApp',      gradient: 'linear-gradient(90deg, #6366f1, #818cf8)' },
-{ label: '\u{1F5A5}\uFE0F Claude Desktop', key: 'claudeDesktop', gradient: 'linear-gradient(90deg, #d97706, #f59e0b)' },
-{ label: '\u{1F9E9} Claude (VS Code)', key: 'claudeVsCode', gradient: 'linear-gradient(90deg, #ea580c, #fb923c)' },
 ];
 
 /** Renders a single horizontal bar item for the mode usage chart. */
@@ -829,7 +827,7 @@ return `
 
 /** Renders the full bar-chart column for a single time period's mode usage. */
 function renderModeBarChart(modeUsage: ModeUsage, title: string): string {
-const total = modeUsage.ask + modeUsage.edit + modeUsage.agent + modeUsage.plan + modeUsage.customAgent + modeUsage.cli + (modeUsage.cliApp ?? 0) + (modeUsage.claudeDesktop ?? 0) + (modeUsage.claudeVsCode ?? 0);
+const total = modeUsage.ask + modeUsage.edit + modeUsage.agent + modeUsage.plan + modeUsage.customAgent + modeUsage.cli + (modeUsage.cliApp ?? 0);
 const bars = MODE_BAR_CONFIGS
 .map(({ label, key, gradient }) => renderModeBarItem(label, modeUsage[key] ?? 0, total, gradient))
 .join('');
@@ -2252,8 +2250,8 @@ function sanitizeRepoPrStatsData(input: unknown): RepoPrStatsResult {
 /** Display label per detected AI agent type, used in the PR detail list. */
 const AI_PR_LABEL: Record<string, string> = {
 	copilot: '🤖 Copilot',
-	claude: '🧠 Claude',
-	openai: '✨ Codex',
+	claude: '🤖 Other AI',
+	openai: '🤖 Other AI',
 	'other-ai': '🤖 AI',
 };
 
@@ -2332,7 +2330,7 @@ function renderReposPrContent(data: RepoPrStatsResult): string {
 						<th style="text-align:left; padding:8px; border-bottom:2px solid var(--border-color); font-size:12px; color:var(--text-secondary); opacity:0.9;">📂 Repository</th>
 						<th style="text-align:center; padding:8px; border-bottom:2px solid var(--border-color); font-size:12px; color:var(--text-secondary); opacity:0.9;">PRs</th>
 						<th style="text-align:center; padding:8px; border-bottom:2px solid var(--border-color); font-size:12px; color:var(--text-secondary); opacity:0.9;" title="PRs you opened yourself, shown as merged / opened. Work driven by a local AI assistant lands here, not under Cloud Agent Authored.">🚢 Yours (merged / opened)</th>
-						<th style="text-align:center; padding:8px; border-bottom:2px solid var(--border-color); font-size:12px; color:var(--text-secondary); opacity:0.9;" title="PRs where the PR author's GitHub login matches a known AI agent (e.g. copilot-swe-agent, claude-code-action, openai-code-agent)">🤖 Cloud Agent Authored</th>
+						<th style="text-align:center; padding:8px; border-bottom:2px solid var(--border-color); font-size:12px; color:var(--text-secondary); opacity:0.9;" title="PRs where the PR author's GitHub login matches a known AI agent">🤖 Cloud Agent Authored</th>
 						<th style="text-align:center; padding:8px; border-bottom:2px solid var(--border-color); font-size:12px; color:var(--text-secondary); opacity:0.9;" title="Open PRs where an AI agent was listed as a requested reviewer">👁 Copilot Review Agent requested†</th>
 					</tr>
 				</thead>
@@ -2343,7 +2341,7 @@ function renderReposPrContent(data: RepoPrStatsResult): string {
 		</div>
 		<div style="margin-top:8px; font-size:10px; color:var(--text-muted); border-top:1px solid var(--border-subtle); padding-top:8px;">
 			† Copilot Review Agent requested counts are for open PRs only. GitHub removes reviewer data after a PR is merged or closed.<br/>
-			🤖 Cloud Agent Authored = PR author's GitHub login matches a known cloud agent (e.g. <code>copilot-swe-agent</code>, <code>claude-code-action</code>, <code>openai-code-agent</code>).
+			🤖 Cloud Agent Authored = PR author's GitHub login matches a known automation account.
 		</div>`;
 }
 
@@ -2354,8 +2352,8 @@ function updateReposPrPanel(data: RepoPrStatsResult): boolean {
 	setHtml(container, `
 		<div class="section-title"><span>🤖</span><span>AI Activity in Repository PRs</span></div>
 		<div class="section-subtitle">
-			PRs from the last 30 days across your known repositories, showing how many were <strong>authored by cloud agents</strong>
-			(i.e. opened by a bot account like <code>copilot-swe-agent</code>, <code>claude-code-action</code>, or <code>openai-code-agent</code>)
+			PRs from the last 30 days across your known repositories, showing how many were <strong>authored by Copilot agents</strong>
+			(i.e. opened by a known Copilot automation account)
 			or had an AI agent requested as a reviewer.
 		</div>
 		${renderReposPrContent(data)}
@@ -3586,7 +3584,6 @@ function wireInsightCardButtons(): void {
 function buildUsageRootHtml(
 	stats: UsageAnalysisStats,
 	customizationHtml: string,
-	multiModelHtml: string,
 	thinkingEffortHtml: string,
 	sessionsSummaryHtml: string,
 	todayTotalRefs: number,
@@ -3631,14 +3628,13 @@ function buildUsageRootHtml(
 				<button class="tab-button ${activeTab === 'tools' ? 'active' : ''}" data-tab="tools"><span class="codicon codicon-tools"></span> Tools &amp; Integrations</button>
 				<button class="tab-button ${activeTab === 'health' ? 'active' : ''}" data-tab="health"><span class="codicon codicon-server-environment"></span> Workspace Health</button>
 				<button class="tab-button ${activeTab === 'repos' ? 'active' : ''}" data-tab="repos"><span class="codicon codicon-git-pull-request"></span> Repository PRs</button>
-				<button class="tab-button ${activeTab === 'agent' ? 'active' : ''}" data-tab="agent"><span class="codicon codicon-cloud"></span> Cloud Agent</button>
 				<button class="tab-button ${activeTab === 'worktrees' ? 'active' : ''}" data-tab="worktrees"><span class="codicon codicon-git-branch"></span> Worktrees</button>
 				<button class="tab-button ${activeTab === 'insights' ? 'active' : ''}" data-tab="insights"><span class="codicon codicon-lightbulb"></span> Insights${(stats.insights ?? []).filter(i => i.status === 'new').length > 0 ? ` <span style="background:rgba(96,165,250,0.4);border-radius:10px;padding:1px 6px;font-size:11px;">${(stats.insights ?? []).filter(i => i.status === 'new').length}</span>` : ''}</button>
 				${correctionsTabButtonHtml(stats.correctionReport ?? null)}
 			</div>
 
 			${safeSectionHtml('Recent Sessions', () => buildSessionsTabPanelHtml(stats))}
-			${safeSectionHtml('My Activity', () => buildActivityTabPanelHtml(stats, multiModelHtml, thinkingEffortHtml, sessionsSummaryHtml, todayTotalRefs, last30DaysTotalRefs))}
+			${safeSectionHtml('My Activity', () => buildActivityTabPanelHtml(stats, thinkingEffortHtml, sessionsSummaryHtml, todayTotalRefs, last30DaysTotalRefs))}
 			${safeSectionHtml('Tools & Integrations', () => buildToolsTabPanelHtml(stats, allToolKeys, allMcpToolKeys, allMcpServerKeys, allHighCostModels, allLowCostModels, allMediumCostModels, allUnknownModels))}
 			${safeSectionHtml('Workspace Health', () => buildHealthTabPanelHtml(customizationHtml, stats))}
 			${safeSectionHtml('Repository PRs & Cloud Agent', () => buildReposAndAgentTabPanelsHtml())}
@@ -4132,7 +4128,6 @@ function buildBillingComparisonSectionHtml(stats: UsageAnalysisStats): string {
 
 function buildActivityTabPanelHtml(
 	stats: UsageAnalysisStats,
-	multiModelHtml: string,
 	thinkingEffortHtml: string,
 	sessionsSummaryHtml: string,
 	todayTotalRefs: number,
@@ -4141,30 +4136,23 @@ function buildActivityTabPanelHtml(
 	// Each section is built through safeSectionHtml so a bug in one section (e.g. a data
 	// shape it doesn't expect) renders an inline error card for that section only, instead of
 	// throwing out of this template literal and blanking the entire Activity tab.
-	const modelCostHtml = safeSectionHtml('Model Cost', () => buildModelCostSectionHtml(stats));
-	const billingComparisonHtml = safeSectionHtml('AI Billing Coverage', () => buildBillingComparisonSectionHtml(stats));
 	const modeUsageHtml = safeSectionHtml('Interaction Modes', () => `
 			<div class="section" id="section-interaction-modes">
 				<div class="section-title"><span>🎯</span><span>Interaction Modes</span></div>
-				<div class="section-subtitle">How you're using AI assistants: Ask (chat), Edit (code edits), Agent (autonomous tasks), Plan, Custom Agent, CLI (terminal), Copilot App (desktop-app CLI sessions), Claude Desktop, or Claude (VS Code)</div>
+				<div class="section-subtitle">How you're using GitHub Copilot: Ask, Edit, Agent, Plan, Custom Agent, Copilot CLI, or Copilot App.</div>
 				<div class="two-column">
 					${renderModeBarChart(stats.today.modeUsage, '📅 Today')}
 					${renderModeBarChart(stats.last30Days.modeUsage, '📊 Last 30 Days')}
 				</div>
 			</div>`);
 	const contextRefsHtml = safeSectionHtml('Context References', () => buildContextRefsHtml(stats, todayTotalRefs, last30DaysTotalRefs));
-	const modelEfficiencyHtml = safeSectionHtml('Model Efficiency', () => buildModelEfficiencySectionHtml(stats));
 	const contextWindowHtml = safeSectionHtml('Context Window', () => buildContextWindowSectionHtml(stats));
 	return `
 		<div id="tab-panel-activity" class="tab-panel"${activeTab !== 'activity' ? ' style="display:none"' : ''}>
 			${sessionsSummaryHtml}
-			${billingComparisonHtml}
 			<!-- Mode Usage Section -->
 			${modeUsageHtml}
 			${contextRefsHtml}
-			${multiModelHtml}
-			${modelCostHtml}
-			${modelEfficiencyHtml}
 			${thinkingEffortHtml}
 			${contextWindowHtml}
 		</div>`;
@@ -4265,7 +4253,6 @@ function renderAutomaticCompactions(stats: AutomaticCompactionStats | undefined)
 	if (!stats) { return ''; }
 	const sources: Array<[string, number]> = [
 		['GitHub Copilot CLI', stats.bySource.copilotCli],
-		['Claude', stats.bySource.claude],
 	];
 	const entries = sources.filter(([, count]) => count > 0)
 		.map(([source, count]) => `${escapeHtml(source)} ×${formatNumber(count)}`);
@@ -5041,7 +5028,6 @@ function renderLayout(stats: UsageAnalysisStats): void {
 	const rendered = assignUsageRootHtml(root, () => buildUsageRootHtml(
 		stats,
 		customizationHtml,
-		'',
 		thinkingEffortHtml,
 		sessionsSummaryHtml,
 		todayTotalRefs,

@@ -41,13 +41,53 @@
         "category": "GitHub Copilot Insights"
       },
       {
+        "command": "aiEngineeringFluency.showDetails",
+        "title": "%command.showDetails.title%",
+        "category": "GitHub Copilot Insights"
+      },
+      {
+        "command": "aiEngineeringFluency.showChart",
+        "title": "%command.showChart.title%",
+        "category": "GitHub Copilot Insights"
+      },
+      {
         "command": "aiEngineeringFluency.showUsageAnalysis",
         "title": "%command.showUsageAnalysis.title%",
         "category": "GitHub Copilot Insights"
       },
       {
+        "command": "aiEngineeringFluency.openMcpJson",
+        "title": "%command.openMcpJson.title%",
+        "category": "GitHub Copilot Insights"
+      },
+      {
         "command": "aiEngineeringFluency.generateDiagnosticReport",
         "title": "%command.generateDiagnosticReport.title%",
+        "category": "GitHub Copilot Insights"
+      },
+      {
+        "command": "aiEngineeringFluency.showMaturity",
+        "title": "%command.showMaturity.title%",
+        "category": "GitHub Copilot Insights"
+      },
+      {
+        "command": "aiEngineeringFluency.showFluencyLevelViewer",
+        "title": "%command.showFluencyLevelViewer.title%",
+        "category": "GitHub Copilot Insights"
+      },
+      {
+        "command": "aiEngineeringFluency.showEnvironmental",
+        "title": "%command.showEnvironmental.title%",
+        "category": "GitHub Copilot Insights"
+      },
+      {
+        "command": "aiEngineeringFluency.showEfficiency",
+        "title": "%command.showEfficiency.title%",
+        "category": "GitHub Copilot Insights"
+      },
+      {
+        "command": "aiEngineeringFluency.resetInsightsState",
+        "title": "%command.resetInsightsState.title%",
         "category": "GitHub Copilot Insights"
       },
       {

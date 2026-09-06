@@ -477,7 +477,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 	// Cache version - increment this when making changes that require cache invalidation.
 	// The merged task-classification + chart-state work changes cached session metadata and
 	// daily rollup contracts, so invalidate older entries to force a clean rebuild.
-	private static readonly CACHE_VERSION = 70;
+	private static readonly CACHE_VERSION = 71;
 	/** Initial stats should not wait indefinitely for one inaccessible or stalled session. */
 	private static readonly SESSION_PRELOAD_TIMEOUT_MS = 15_000;
 	// Maximum length for displaying workspace IDs in diagnostics/customization matrix
@@ -7285,7 +7285,7 @@ private computeFallbackDailyRollup(
 			return;
 		}
 		const panel = this.analysisPanel = vscode.window.createWebviewPanel(
-			'copilotUsageAnalysis', 'GitHub Copilot Insights',
+			'copilotUsageAnalysis', 'GitHub Copilot Analysis',
 			{ viewColumn: vscode.ViewColumn.One, preserveFocus: true },
 			{ enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview')] }
 		);
@@ -11775,7 +11775,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
   ): string {
     const nonce = getNonce();
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "copilot-insights.js"),
+      vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "usage.js"),
     );
 
     const detectedLocale = this._detectUsageAnalysisLocale(stats);
@@ -11788,7 +11788,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
 			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 			${buildCspMeta(webview, nonce)}
 			${getCodiconStylesheetTag(webview, this.extensionUri)}
-			<title>GitHub Copilot Insights</title>
+			<title>GitHub Copilot Analysis</title>
 		</head>
 		<body>
 			<div id="root"></div>

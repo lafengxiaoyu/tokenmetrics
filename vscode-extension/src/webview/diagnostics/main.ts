@@ -823,8 +823,8 @@ function renderShareCardTab(detailedFiles: SessionFileDetails[], isLoadingSessio
       <span id="share-card-period-selector"></span>
     </div>
     <div class="share-card">
-      <div class="share-badge">🤖 AI Engineering Fluency</div>
-      <div class="share-title">My AI Coding Toolbox</div>
+      <div class="share-badge">💙 GitHub Copilot Insights</div>
+      <div class="share-title">My Copilot Activity</div>
       <div class="share-subtitle">${escapeHtml(PERIOD_LABELS[period])} · ${editors.length} editor${editors.length === 1 ? "" : "s"} detected</div>
       <div class="share-pills">${pills}</div>
       <div class="share-stats">
@@ -1029,7 +1029,7 @@ function renderFolderAnalyzerTab(): string {
           type="text"
           id="folder-path-input"
           class="folder-input"
-          placeholder="Paste a folder path here, e.g. /Users/you/.claude/projects/abc123"
+          placeholder="Paste a GitHub Copilot session folder path here"
         />
         <button class="button secondary" id="btn-browse-folder">📂 Browse…</button>
       </div>
@@ -1038,16 +1038,9 @@ function renderFolderAnalyzerTab(): string {
           Tool type (determines which file types to scan):
         </label>
         <select id="tool-type-select" class="tool-type-select">
-          <option value="auto">🔍 Auto-detect (all JSON / JSONL files)</option>
-          <option value="antigravity">🚀 Antigravity (.jsonl only)</option>
-          <option value="claude-code">🟣 Claude Code (.jsonl only)</option>
-          <option value="claude-desktop">🖥️ Claude Desktop</option>
-          <option value="continue">⚡ Continue</option>
+          <option value="auto">🔍 Auto-detect GitHub Copilot sessions</option>
           <option value="copilot-chat">💙 GitHub Copilot Chat (VS Code)</option>
           <option value="copilot-cli">🤖 GitHub Copilot CLI</option>
-          <option value="gemini-cli">💎 Gemini CLI (.jsonl only)</option>
-          <option value="mistral-vibe">🔥 Mistral Vibe</option>
-          <option value="opencode">🟢 OpenCode (JSON format only — DB not supported)</option>
         </select>
       </div>
       <div style="margin-top: 16px;">
@@ -2987,7 +2980,7 @@ function renderSkillUsageTab(
     return `<div id="tab-skill-usage" class="tab-content">
 <div class="info-box">
 <div class="info-box-title">🧩 Skill Usage</div>
-<div>Tracks how often each agent skill (e.g. a <code>/skill-name</code> invocation or another editor's <code>SKILL.md</code> workflow) was invoked over the last 30 days. No skill invocations have been recorded yet. Skill usage is currently detected for Claude Code, Claude Desktop, and Copilot CLI sessions — support for other editors depends on whether their session logs expose a distinguishable skill name.</div>
+<div>Tracks how often each Copilot CLI skill (for example, a <code>/skill-name</code> invocation or a <code>SKILL.md</code> workflow) was invoked over the last 30 days. No skill invocations have been recorded yet.</div>
 </div>
 </div>`;
   }
@@ -3009,7 +3002,7 @@ function renderSkillUsageTab(
   return `<div id="tab-skill-usage" class="tab-content">
 <div class="info-box">
 <div class="info-box-title">🧩 Skill Usage</div>
-<div>${formatTokenCount(shownTotal)} skill invocation(s) across ${rows.length} skill(s) ${scopeLabel} in the last 30 days. Currently detected for Claude Code / Claude Desktop / Copilot CLI sessions.</div>
+<div>${formatTokenCount(shownTotal)} Copilot CLI skill invocation(s) across ${rows.length} skill(s) ${scopeLabel} in the last 30 days.</div>
 </div>
 ${filterPanel}
 <table class="session-table skill-usage-table">
@@ -3427,7 +3420,7 @@ function buildDiagReportTabHtml(escapedReport: string): string {
 <div class="info-box">
 <div class="info-box-title">📋 About This Report</div>
 <div>
-This diagnostic report contains information about your AI Engineering Fluency extension
+This diagnostic report contains information about your GitHub Copilot Insights
 extension setup and usage statistics. </br> It does <strong>not</strong> include any of your
 code or conversation content. You can safely share this report when reporting issues.
 </div>

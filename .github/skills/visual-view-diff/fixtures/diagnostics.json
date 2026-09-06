@@ -1,5 +1,5 @@
 {
-  "report": "======================================================================\nAI ENGINEERING FLUENCY — DIAGNOSTIC REPORT\n======================================================================\n\nGenerated:            2026-03-14 09:30:00 UTC\nExtension version:    0.0.0-visual-fixture\nVS Code version:      1.134.0\nPlatform:             linux x64\n\n-- Session discovery ------------------------------------------------\nSession folders scanned:   4\nSession files found:       128\nEditors detected:          VS Code, Claude Code, Copilot CLI\n\n-- Token statistics -------------------------------------------------\nTokens (last 30 days):     15,188,800\nSessions (last 30 days):   264\nEstimated cost:            $38.17\n\n-- Cache -------------------------------------------------------------\nCached session entries:    128\nCache size on disk:        4.2 MB\n",
+  "report": "======================================================================\nGITHUB COPILOT INSIGHTS — DIAGNOSTIC REPORT\n======================================================================\n\nGenerated:            2026-03-14 09:30:00 UTC\nExtension version:    0.0.0-visual-fixture\nVS Code version:      1.134.0\nPlatform:             linux x64\n\n-- Session discovery ------------------------------------------------\nSession folders scanned:   3\nSession files found:       128\nEditors detected:          VS Code, VS Code Insiders, Copilot CLI\n\n-- Token statistics -------------------------------------------------\nTokens (last 30 days):     15,188,800\nSessions (last 30 days):   264\nEstimated cost:            $38.17\n\n-- Cache -------------------------------------------------------------\nCached session entries:    128\nCache size on disk:        4.2 MB\n",
   "sessionFiles": [
     {
       "file": "/home/dev/.copilot/session-state/session-a1b2c3.jsonl",
@@ -7,7 +7,7 @@
       "modified": "2026-03-14T08:55:00.000Z"
     },
     {
-      "file": "/home/dev/.claude/projects/acme-web-app/2026-03-13.jsonl",
+      "file": "/home/dev/.vscode-insiders/workspaceStorage/acme-web-app/session.json",
       "size": 96256,
       "modified": "2026-03-13T17:12:00.000Z"
     },
@@ -58,8 +58,8 @@
       "fileCount": 52
     },
     {
-      "path": "/home/dev/.claude/projects",
-      "editor": "Claude Code",
+      "path": "/home/dev/.vscode-insiders/workspaceStorage",
+      "editor": "VS Code Insiders",
       "fileCount": 41
     },
     {

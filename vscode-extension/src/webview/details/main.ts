@@ -1172,29 +1172,22 @@ function buildEmptyStateSection(): HTMLElement {
 const section = el('div', 'section');
 const inner = el('div', 'empty-state');
 
-const title = el('div', 'empty-state-title', '👋 Welcome to AI Engineering Fluency');
+const title = el('div', 'empty-state-title', '👋 Welcome to GitHub Copilot Insights');
 
 const desc = el('p', 'empty-state-description',
-'This extension tracks AI token usage by reading session log files stored locally by supported tools. No token data has been found yet.'
+'This extension analyzes observable GitHub Copilot usage from session data stored locally. No Copilot data has been found yet.'
 );
 
 const toolsLabel = document.createElement('p');
 toolsLabel.className = 'empty-state-description';
 const toolsLabelStrong = document.createElement('strong');
-toolsLabelStrong.textContent = 'Supported tools & editors:';
+toolsLabelStrong.textContent = 'Supported Copilot experiences:';
 toolsLabel.append(toolsLabelStrong);
 
 const toolsList = document.createElement('ul');
 toolsList.className = 'empty-state-steps';
 const toolsTexts = [
-'🚀 Antigravity — Google\'s Gemini-powered desktop IDE',
-'🤖 Claude Code — Anthropic\'s CLI coding agent',
 '💻 Copilot CLI — GitHub Copilot in the terminal',
-'🖱️ Cursor, 🌊 Windsurf — built-in AI chat',
-'💎 Gemini CLI — Google\'s open-source CLI coding agent',
-'🟢 OpenCode, 🦀 Crush — terminal-based coding agents',
-'π Pi — Mistral-powered terminal coding agent',
-'🖥️ Visual Studio 2022+ — GitHub Copilot Chat extension',
 '💙 VS Code / VS Code Insiders / VSCodium — GitHub Copilot Chat extension',
 ];
 toolsTexts.forEach(text => {
@@ -1212,9 +1205,9 @@ stepsLabel.append(stepsLabelStrong);
 const steps = document.createElement('ol');
 steps.className = 'empty-state-steps';
 const stepTexts = [
-'Use any of the supported tools or editors listed above to interact with an AI model.',
+'Use GitHub Copilot Chat in VS Code or GitHub Copilot CLI.',
 'For GitHub Copilot in VS Code: open the Copilot Chat panel (Ctrl+Alt+I / Cmd+Alt+I) and start a conversation.',
-'For terminal agents (Claude Code, Gemini CLI, Antigravity, Pi, OpenCode, Copilot CLI): run a coding session in your terminal.',
+'For GitHub Copilot CLI: run a coding session in your terminal.',
 'Click the 🔄 Refresh button above to reload the stats after your first session.',
 ];
 stepTexts.forEach(text => {
@@ -1224,7 +1217,7 @@ steps.append(li);
 });
 
 const note = el('div', 'empty-state-note',
-'💡 If you have been using one of the supported tools but still see no data, open the Diagnostics panel (🔍 Diagnostics button above) to verify that session files are being discovered correctly.'
+'💡 If you have been using GitHub Copilot but still see no data, open Diagnostics to verify that Copilot session files are being discovered correctly.'
 );
 
 inner.append(title, desc, toolsLabel, toolsList, stepsLabel, steps, note);
@@ -1242,7 +1235,7 @@ notes.className = 'notes';
 
 const items = [
 'Cost (UBB) uses GitHub Copilot AI Credit rates (1 credit = $0.01) — this is what you are billed under Usage Based Billing.',
-'"Estimated cost (selected providers)" and the summary cost card sum estimated spend across all providers (GitHub Copilot, Anthropic, Google, OpenAI, …); use the "⚙ Providers" filter in the Cost by Provider section to include/exclude specific providers.',
+'The estimated cost summary reflects observable GitHub Copilot usage only.',
 'Estimated CO₂ is based on ~0.2 g CO₂e per 1,000 tokens.',
 'Estimated water usage is based on ~0.3 L per 1,000 tokens.',
 'Tree equivalent represents the fraction of a single mature tree\'s annual CO₂ absorption (~21 kg/year).'

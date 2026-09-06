@@ -49,7 +49,7 @@
   ],
   "modelDatasets": [
     {
-      "label": "claude-sonnet-4.5",
+      "label": "gpt-4.1",
       "backgroundColor": "#b180d7",
       "borderColor": "#b180d7",
       "data": [
@@ -91,7 +91,7 @@
       ]
     },
     {
-      "label": "gemini-2.5-pro",
+      "label": "gpt-5-mini",
       "backgroundColor": "#89d185",
       "borderColor": "#89d185",
       "data": [
@@ -135,7 +135,7 @@
       ]
     },
     {
-      "label": "Claude Code",
+      "label": "VS Code Insiders",
       "backgroundColor": "#d18616",
       "borderColor": "#d18616",
       "data": [
@@ -223,7 +223,7 @@
   ],
   "editorTotalsMap": {
     "VS Code": 980000,
-    "Claude Code": 525000,
+    "VS Code Insiders": 525000,
     "Copilot CLI": 245000
   },
   "repositoryTotalsMap": {

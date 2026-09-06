@@ -332,7 +332,7 @@ function skillImpactCard(impact: SkillImpact): string {
 function renderSkillsTab(d: EfficiencyViewData): string {
 	if (!d.hasSkills) {
 		return `
-			<p class="eff-section-note">No agent-skill invocations detected in the last ${d.skillTrends.weeks.length} weeks. Skills are custom slash-commands and packaged instructions (e.g. <code>/graphify</code>) detected in Claude Code, Claude Desktop, and Copilot CLI session logs. Once you use them, this tab shows usage over time and whether skill-assisted sessions run leaner than the rest.</p>`;
+			<p class="eff-section-note">No Copilot CLI skill invocations detected in the last ${d.skillTrends.weeks.length} weeks. Once you use custom slash commands or packaged instructions, this tab shows usage over time and whether skill-assisted sessions run leaner than the rest.</p>`;
 	}
 	const impactSection = d.skillImpact.length > 0
 		? `<h3 class="skill-section-heading">Do skill-assisted sessions run differently?</h3>
@@ -438,7 +438,7 @@ function renderValueTab(d: EfficiencyViewData): string {
 		cards.push(`
 			<div class="value-card"><h3>🤖 Delegated to AI agents</h3>
 				<div class="value-big">${v.aiPrs}</div>
-				<div class="value-sub">PRs opened by an AI bot account (Copilot coding agent, Claude, Codex). ${v.aiPrs === 0 ? 'Zero is expected when you drive AI locally and open PRs yourself — your work is counted under Merged PRs.' : 'These ran autonomously in the cloud rather than in your editor.'}</div>
+				<div class="value-sub">PRs opened by the GitHub Copilot coding agent. ${v.aiPrs === 0 ? 'Zero is expected when you drive Copilot locally and open PRs yourself — your work is counted under Merged PRs.' : 'These ran autonomously rather than in your editor.'}</div>
 			</div>`);
 	}
 	const hint = v.userPrs === null
@@ -673,7 +673,7 @@ function taskMixHtml(cmp: ModelComparison): string {
 function renderModelsTab(d: EfficiencyViewData): string {
 	initModelState(d);
 	if (d.modelDaily.length === 0) {
-		return `<p class="eff-section-note">No per-model efficiency data yet. This tab needs sessions whose logs carry per-turn tool-call detail (Copilot CLI, Claude Code, Copilot Chat and similar). Keep working and check back in a few days.</p>`;
+		return `<p class="eff-section-note">No per-model efficiency data yet. This tab needs GitHub Copilot sessions whose logs carry per-turn tool-call detail. Keep working and check back in a few days.</p>`;
 	}
 	const controls = renderModelControls(d);
 	const cmp = buildModelComparison(d);

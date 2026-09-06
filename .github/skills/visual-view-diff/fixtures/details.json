@@ -8,7 +8,7 @@
     "avgInteractionsPerSession": 7.5,
     "avgTokensPerSession": 53520,
     "modelUsage": {
-      "claude-sonnet-4.5": {
+      "gpt-4.1": {
         "inputTokens": 410000,
         "outputTokens": 96000
       },
@@ -16,7 +16,7 @@
         "inputTokens": 288000,
         "outputTokens": 61000
       },
-      "gemini-2.5-pro": {
+      "gpt-5-mini": {
         "inputTokens": 302500,
         "outputTokens": 127000
       }
@@ -26,7 +26,7 @@
         "tokens": 720000,
         "sessions": 13
       },
-      "Claude Code": {
+      "VS Code Insiders": {
         "tokens": 380500,
         "sessions": 7
       },
@@ -41,19 +41,19 @@
           "inputTokens": 288000,
           "outputTokens": 61000
         },
-        "claude-sonnet-4.5": {
+        "gpt-4.1": {
           "inputTokens": 250000,
           "outputTokens": 51000
         }
       },
-      "Claude Code": {
-        "claude-sonnet-4.5": {
+      "VS Code Insiders": {
+        "gpt-4.1": {
           "inputTokens": 160000,
           "outputTokens": 45000
         }
       },
       "Copilot CLI": {
-        "gemini-2.5-pro": {
+        "gpt-5-mini": {
           "inputTokens": 302500,
           "outputTokens": 127000
         }
@@ -63,12 +63,10 @@
     "treesEquivalent": 0.21,
     "waterUsage": 1.94,
     "estimatedCost": 3.47,
-    "estimatedCostCopilot": 2.18,
+    "estimatedCostCopilot": 3.47,
     "cachedTokens": 214000,
     "billingGroupCosts": {
-      "GitHub Copilot": 2.18,
-      "Anthropic": 0.86,
-      "Google": 0.43
+      "GitHub Copilot": 3.47
     },
     "subAgentSessions": 3
   },
@@ -81,7 +79,7 @@
     "avgInteractionsPerSession": 7.5,
     "avgTokensPerSession": 53520,
     "modelUsage": {
-      "claude-sonnet-4.5": {
+      "gpt-4.1": {
         "inputTokens": 4920000,
         "outputTokens": 1152000
       },
@@ -89,7 +87,7 @@
         "inputTokens": 3456000,
         "outputTokens": 732000
       },
-      "gemini-2.5-pro": {
+      "gpt-5-mini": {
         "inputTokens": 3630000,
         "outputTokens": 1524000
       }
@@ -99,7 +97,7 @@
         "tokens": 8640000,
         "sessions": 156
       },
-      "Claude Code": {
+      "VS Code Insiders": {
         "tokens": 4566000,
         "sessions": 84
       },
@@ -114,19 +112,19 @@
           "inputTokens": 3456000,
           "outputTokens": 732000
         },
-        "claude-sonnet-4.5": {
+        "gpt-4.1": {
           "inputTokens": 3000000,
           "outputTokens": 612000
         }
       },
-      "Claude Code": {
-        "claude-sonnet-4.5": {
+      "VS Code Insiders": {
+        "gpt-4.1": {
           "inputTokens": 1920000,
           "outputTokens": 540000
         }
       },
       "Copilot CLI": {
-        "gemini-2.5-pro": {
+        "gpt-5-mini": {
           "inputTokens": 3630000,
           "outputTokens": 1524000
         }
@@ -136,12 +134,10 @@
     "treesEquivalent": 2.52,
     "waterUsage": 23.28,
     "estimatedCost": 41.64,
-    "estimatedCostCopilot": 26.160000000000004,
+    "estimatedCostCopilot": 41.64,
     "cachedTokens": 2568000,
     "billingGroupCosts": {
-      "GitHub Copilot": 26.160000000000004,
-      "Anthropic": 10.32,
-      "Google": 5.16
+      "GitHub Copilot": 41.64
     },
     "subAgentSessions": 36
   },
@@ -154,7 +150,7 @@
     "avgInteractionsPerSession": 7.5,
     "avgTokensPerSession": 53520,
     "modelUsage": {
-      "claude-sonnet-4.5": {
+      "gpt-4.1": {
         "inputTokens": 3690000,
         "outputTokens": 864000
       },
@@ -162,7 +158,7 @@
         "inputTokens": 2592000,
         "outputTokens": 549000
       },
-      "gemini-2.5-pro": {
+      "gpt-5-mini": {
         "inputTokens": 2722500,
         "outputTokens": 1143000
       }
@@ -172,7 +168,7 @@
         "tokens": 6480000,
         "sessions": 117
       },
-      "Claude Code": {
+      "VS Code Insiders": {
         "tokens": 3424500,
         "sessions": 63
       },
@@ -187,19 +183,19 @@
           "inputTokens": 2592000,
           "outputTokens": 549000
         },
-        "claude-sonnet-4.5": {
+        "gpt-4.1": {
           "inputTokens": 2250000,
           "outputTokens": 459000
         }
       },
-      "Claude Code": {
-        "claude-sonnet-4.5": {
+      "VS Code Insiders": {
+        "gpt-4.1": {
           "inputTokens": 1440000,
           "outputTokens": 405000
         }
       },
       "Copilot CLI": {
-        "gemini-2.5-pro": {
+        "gpt-5-mini": {
           "inputTokens": 2722500,
           "outputTokens": 1143000
         }
@@ -209,12 +205,10 @@
     "treesEquivalent": 1.89,
     "waterUsage": 17.46,
     "estimatedCost": 31.23,
-    "estimatedCostCopilot": 19.62,
+    "estimatedCostCopilot": 31.23,
     "cachedTokens": 1926000,
     "billingGroupCosts": {
-      "GitHub Copilot": 19.62,
-      "Anthropic": 7.74,
-      "Google": 3.87
+      "GitHub Copilot": 31.23
     },
     "subAgentSessions": 27
   },
@@ -227,7 +221,7 @@
     "avgInteractionsPerSession": 7.5,
     "avgTokensPerSession": 53520,
     "modelUsage": {
-      "claude-sonnet-4.5": {
+      "gpt-4.1": {
         "inputTokens": 4510000,
         "outputTokens": 1056000
       },
@@ -235,7 +229,7 @@
         "inputTokens": 3168000,
         "outputTokens": 671000
       },
-      "gemini-2.5-pro": {
+      "gpt-5-mini": {
         "inputTokens": 3327500,
         "outputTokens": 1397000
       }
@@ -245,7 +239,7 @@
         "tokens": 7920000,
         "sessions": 143
       },
-      "Claude Code": {
+      "VS Code Insiders": {
         "tokens": 4185500,
         "sessions": 77
       },
@@ -260,19 +254,19 @@
           "inputTokens": 3168000,
           "outputTokens": 671000
         },
-        "claude-sonnet-4.5": {
+        "gpt-4.1": {
           "inputTokens": 2750000,
           "outputTokens": 561000
         }
       },
-      "Claude Code": {
-        "claude-sonnet-4.5": {
+      "VS Code Insiders": {
+        "gpt-4.1": {
           "inputTokens": 1760000,
           "outputTokens": 495000
         }
       },
       "Copilot CLI": {
-        "gemini-2.5-pro": {
+        "gpt-5-mini": {
           "inputTokens": 3327500,
           "outputTokens": 1397000
         }
@@ -282,12 +276,10 @@
     "treesEquivalent": 2.31,
     "waterUsage": 21.34,
     "estimatedCost": 38.17,
-    "estimatedCostCopilot": 23.98,
+    "estimatedCostCopilot": 38.17,
     "cachedTokens": 2354000,
     "billingGroupCosts": {
-      "GitHub Copilot": 23.98,
-      "Anthropic": 9.459999999999999,
-      "Google": 4.7299999999999995
+      "GitHub Copilot": 38.17
     },
     "subAgentSessions": 33
   },
