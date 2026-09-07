@@ -1216,6 +1216,23 @@ export function getEditorTypeFromPath(filePath: string, isOpenCodeSessionFile?: 
 }
 
 /**
+ * Maps the content-classified `ModeUsage` keys (see `MODE_USAGE_CONTENT_CLASSIFIED_KEYS` in
+ * `vscode-extension/src/webview/shared/types.ts`) to the editor label
+ * `refineEditorLabelForInteractionModeSplit` produces for them when synced to the sharing
+ * server. `claudeDesktop` is intentionally absent: Claude Desktop already gets its own
+ * stable path-based label ('Claude Desktop') via `detectClaudeCodeEditorVariant`, so it
+ * needs no further refinement here.
+ *
+ * `workspaceHelpers.test.ts` asserts this map's keys plus `claudeDesktop` equal
+ * `MODE_USAGE_CONTENT_CLASSIFIED_KEYS` — add a new content-classified interaction mode to
+ * one and the test fails until the other side is updated too.
+ */
+export const SYNCED_INTERACTION_MODE_LABELS: Readonly<Record<string, string>> = {
+	cliApp: 'Copilot App',
+	claudeVsCode: 'Claude (VS Code)',
+};
+
+/**
  * Refines a `getEditorTypeFromPath` result with the same content-based signals the
  * "Interaction Modes" usage view already applies per-session (see
  * `usageAnalysis.ts::_asuApplyCopilotAppSplit` and `claudeCodeAdapter.ts::resolveModeBucket`),
@@ -1231,8 +1248,8 @@ export function getEditorTypeFromPath(filePath: string, isOpenCodeSessionFile?: 
  * Leaves every other editor label untouched.
  */
 export function refineEditorLabelForInteractionModeSplit(filePath: string, baseLabel: string): string {
-	if (baseLabel === 'Claude Code') { return 'Claude (VS Code)'; }
-	if (baseLabel === 'Copilot CLI' && isCopilotAppSessionFile(filePath)) { return 'Copilot App'; }
+	if (baseLabel === 'Claude Code') { return SYNCED_INTERACTION_MODE_LABELS.claudeVsCode; }
+	if (baseLabel === 'Copilot CLI' && isCopilotAppSessionFile(filePath)) { return SYNCED_INTERACTION_MODE_LABELS.cliApp; }
 	return baseLabel;
 }
 

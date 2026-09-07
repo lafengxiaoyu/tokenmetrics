@@ -349,8 +349,10 @@ import {
         getEditorTypeFromPath,
         detectEditorSource,
         detectClaudeCodeEditorVariant,
-        refineEditorLabelForInteractionModeSplit
+        refineEditorLabelForInteractionModeSplit,
+        SYNCED_INTERACTION_MODE_LABELS
 } from '../../../src/workspaceHelpers';
+import { MODE_USAGE_CONTENT_CLASSIFIED_KEYS } from '../../src/webview/shared/types';
 
 // ── extractWorkspaceIdFromSessionPath ───────────────────────────────────
 
@@ -514,6 +516,20 @@ test('refineEditorLabelForInteractionModeSplit: leaves Copilot CLI untouched whe
 
 test('refineEditorLabelForInteractionModeSplit: leaves unrelated editor labels untouched', () => {
         assert.equal(refineEditorLabelForInteractionModeSplit('/home/user/Code/User/workspaceStorage/abc/session.json', 'VS Code'), 'VS Code');
+});
+
+test('SYNCED_INTERACTION_MODE_LABELS stays in lockstep with MODE_USAGE_CONTENT_CLASSIFIED_KEYS (drift guard)', () => {
+        // 'claudeDesktop' needs no sync-side refinement: it already gets a stable path-based
+        // label ('Claude Desktop') straight from detectClaudeCodeEditorVariant.
+        const syncedKeys = Object.keys(SYNCED_INTERACTION_MODE_LABELS).concat('claudeDesktop').sort();
+        const webviewKeys = [...MODE_USAGE_CONTENT_CLASSIFIED_KEYS].sort();
+        assert.deepEqual(
+                syncedKeys,
+                webviewKeys,
+                'A new content-classified ModeUsage key was added on one side without updating the other — ' +
+                        'add it to SYNCED_INTERACTION_MODE_LABELS (workspaceHelpers.ts) or ' +
+                        'MODE_USAGE_CONTENT_CLASSIFIED_KEYS (webview/shared/types.ts) to match.'
+        );
 });
 
 test('getEditorTypeFromPath: detects Cursor', () => {
