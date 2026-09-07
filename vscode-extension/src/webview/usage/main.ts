@@ -392,6 +392,8 @@ const repoAnalysisState = new Map<string, RepoAnalysisRecord>();
 const repoAnalysisInFlight = new Set<string>();
 let selectedRepoPath: string | null = null;
 let isSwitchingRepository = false;
+/** When true, the Workspace Health repo list shows every workspace instead of grouping low-activity ones into "Other". */
+let showAllWorkspacesInHealth = false;
 let isBatchAnalysisInProgress = false;
 /** True while the single "Analyze Repo for Best Practices" analysis (no workspace matrix) runs. */
 let isSingleRepoAnalysisInProgress = false;
@@ -5177,6 +5179,16 @@ function wireRepositoryButtons(): void {
 
 	document.getElementById('repo-list-pane')?.addEventListener('click', (e: MouseEvent) => {
 		const target = e.target as HTMLElement;
+		if (target.closest('#btn-show-other-workspaces')) {
+			showAllWorkspacesInHealth = true;
+			renderRepositoryHygienePanels();
+			return;
+		}
+		if (target.closest('#btn-collapse-other-workspaces')) {
+			showAllWorkspacesInHealth = false;
+			renderRepositoryHygienePanels();
+			return;
+		}
 		const actionButton = target.closest<HTMLElement>('.btn-repo-action');
 		if (!actionButton) { return; }
 		const workspacePath = actionButton.getAttribute('data-workspace-path');
@@ -5718,7 +5730,38 @@ function buildRepoAnalysisBodyElement(data: RepoAnalysisData, workspacePath?: st
 	return container;
 }
 
-function renderRepoListPane(listPane: HTMLElement, visibleWorkspaces: any[], hasSelectedRepository: boolean): void {
+/**
+ * Splits workspaces into a "major" group and a long-tail "other" group based on session count,
+ * so a handful of heavily-used workspaces aren't buried in a long list of one/two-session workspaces.
+ * The split point is found dynamically: the biggest proportional drop in session count between
+ * consecutive workspaces (sorted descending), as long as the drop is at least 2x and leaves a
+ * tail of 3+ workspaces (otherwise there's no meaningful "long tail" to group).
+ */
+function computeWorkspaceHealthGrouping(workspaces: WorkspaceCustomizationRow[]): { visible: WorkspaceCustomizationRow[]; otherWorkspaces: WorkspaceCustomizationRow[] } {
+	if (workspaces.length <= 6) {
+		return { visible: workspaces, otherWorkspaces: [] };
+	}
+	const sorted = [...workspaces].sort((a, b) => (Number(b.sessionCount) || 0) - (Number(a.sessionCount) || 0));
+	let splitIdx = sorted.length;
+	let bestRatio = 1;
+	for (let i = 1; i < sorted.length; i++) {
+		const prev = Number(sorted[i - 1].sessionCount) || 0;
+		const curr = Number(sorted[i].sessionCount) || 0;
+		if (prev <= 0) { continue; }
+		const ratio = prev / Math.max(curr, 1);
+		if (ratio > bestRatio) {
+			bestRatio = ratio;
+			splitIdx = i;
+		}
+	}
+	const tailSize = sorted.length - splitIdx;
+	if (bestRatio < 2 || splitIdx < 1 || tailSize < 3) {
+		return { visible: sorted, otherWorkspaces: [] };
+	}
+	return { visible: sorted.slice(0, splitIdx), otherWorkspaces: sorted.slice(splitIdx) };
+}
+
+function renderRepoListPane(listPane: HTMLElement, visibleWorkspaces: any[], hasSelectedRepository: boolean, otherWorkspaces: WorkspaceCustomizationRow[] = [], canCollapse: boolean = false): void {
 	const colStyles = {
 		sessions: 'width: 60px; text-align: right; flex-shrink: 0; font-size: 11px; color: var(--text-primary);',
 		interactions: 'width: 80px; text-align: right; flex-shrink: 0; font-size: 11px; color: var(--text-primary);',
@@ -5760,7 +5803,21 @@ function renderRepoListPane(listPane: HTMLElement, visibleWorkspaces: any[], has
 				</vscode-button>
 			</div>
 		`;
-	}).join(''));
+	}).join('') + (otherWorkspaces.length > 0 ? `
+		<div class="repo-item repo-item-other" style="padding: 6px 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; background: var(--bg-secondary);">
+			<div style="flex: 1; min-width: 0; font-size: 12px; font-style: italic; color: var(--text-secondary);">
+				Other (${otherWorkspaces.length} repositor${otherWorkspaces.length === 1 ? 'y' : 'ies'} with low activity)
+			</div>
+			<div style="${colStyles.sessions}">${otherWorkspaces.reduce((sum, ws) => sum + (Number(ws.sessionCount) || 0), 0)}</div>
+			<div style="${colStyles.interactions}">${otherWorkspaces.reduce((sum, ws) => sum + (Number(ws.interactionCount) || 0), 0)}</div>
+			<div style="${colStyles.score}">—</div>
+			<vscode-button id="btn-show-other-workspaces" appearance="secondary" style="width: 110px; flex-shrink: 0;">Show all</vscode-button>
+		</div>
+	` : showAllWorkspacesInHealth && !hasSelectedRepository && canCollapse ? `
+		<div class="repo-item repo-item-other" style="padding: 6px 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: flex-end;">
+			<vscode-button id="btn-collapse-other-workspaces" appearance="secondary" style="width: 110px; flex-shrink: 0;">Show less</vscode-button>
+		</div>
+	` : ''));
 }
 
 function renderRepoDetailSuccess(detailsPane: HTMLElement, record: any, workspaceName: string): void {
@@ -5795,13 +5852,22 @@ function renderRepositoryHygienePanels(): void {
 	}
 
 	const hasSelectedRepository = !!selectedRepoPath && !isSwitchingRepository;
-	const visibleWorkspaces = hasSelectedRepository
-		? hygieneMatrixState.workspaces.filter((ws) => ws.workspacePath === selectedRepoPath)
-		: hygieneMatrixState.workspaces;
+	const grouping = computeWorkspaceHealthGrouping(hygieneMatrixState.workspaces);
+	const canCollapse = grouping.otherWorkspaces.length > 0;
+	let visibleWorkspaces: WorkspaceCustomizationRow[];
+	let otherWorkspaces: WorkspaceCustomizationRow[] = [];
+	if (hasSelectedRepository) {
+		visibleWorkspaces = hygieneMatrixState.workspaces.filter((ws) => ws.workspacePath === selectedRepoPath);
+	} else if (showAllWorkspacesInHealth || !canCollapse) {
+		visibleWorkspaces = grouping.visible.concat(grouping.otherWorkspaces);
+	} else {
+		visibleWorkspaces = grouping.visible;
+		otherWorkspaces = grouping.otherWorkspaces;
+	}
 
 	listContainer.classList.remove('repo-hygiene-pane-collapsed');
 	detailsContainer.classList.toggle('repo-hygiene-pane-collapsed', !hasSelectedRepository);
-	renderRepoListPane(listPane, visibleWorkspaces, hasSelectedRepository);
+	renderRepoListPane(listPane, visibleWorkspaces, hasSelectedRepository, otherWorkspaces, canCollapse);
 
 	if (!hasSelectedRepository || !selectedRepoPath) {
 		detailsPane.replaceChildren();
