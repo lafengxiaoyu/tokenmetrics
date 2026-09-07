@@ -143,11 +143,14 @@ function renderTeamPanelBaseStyles(): string {
     h1 { font-size: 1.2em; margin-bottom: 24px; font-weight: 600; }
     h2 { font-size: 1.05em; margin: 0 0 10px; font-weight: 600; }
     h3 { font-size: 0.95em; margin: 18px 0 8px; font-weight: 600; }
-    .layout { display: flex; gap: 32px; align-items: flex-start; }
-    .form-col { flex: 0 0 360px; min-width: 300px; }
+    .layout { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+    .form-col { flex: 1 1 360px; min-width: 280px; }
     .info-col {
-      flex: 1; min-width: 320px; padding-left: 28px;
+      flex: 2 1 320px; min-width: 280px; padding-left: 28px;
       border-left: 1px solid var(--vscode-panel-border, #454545);
+    }
+    @media (max-width: 720px) {
+      .info-col { padding-left: 0; border-left: none; border-top: 1px solid var(--vscode-panel-border, #454545); padding-top: 20px; }
     }
     .field { margin-bottom: 20px; }
     .field label { display: block; margin-bottom: 6px; font-weight: 500; }
@@ -265,9 +268,9 @@ function renderTeamPanelBody(nonce: string, enabledChecked: string, safeEndpoint
 function renderTeamInfoColumn(): string {
 	return `<div class="info-col">
       <h2>What data is shared</h2>
-      <p class="info-lead">The extension reuses your existing GitHub sign-in — no new credentials are created. Once a day it sends aggregated usage rollups (never raw prompts or completions) to the server URL above.</p>
+      <p class="info-lead">The extension reuses your existing GitHub sign-in — no new credentials are created. On a periodic timer (at most every 5 minutes) it sends aggregated usage rollups (never raw prompts or completions) to the server URL above.</p>
       <div class="info-card">
-        <div class="row"><strong>Your identity:</strong> every upload is authenticated with your GitHub token, so the server always knows which GitHub account sent it. Unlike the Azure Storage backend, the Team Server has no anonymous mode — the sharing profile below only controls whether readable workspace/machine <em>names</em> are included.</div>
+        <div class="row"><strong>Your identity:</strong> every upload is authenticated with your GitHub token, so the server always knows which GitHub account sent it. Unlike the Azure Storage backend, the Team Server has no anonymous mode — the sharing profile below controls whether readable workspace/machine <em>names</em> are included (together with the "share readable names" setting) and whether a per-user dimension is added, not whether you're identifiable.</div>
       </div>
       <div class="info-card" id="profile-explainer"></div>
       <h3>Fields sent per upload</h3>
@@ -311,10 +314,10 @@ function renderTeamPanelScript(nonce: string): string {
     const vscode = acquireVsCodeApi();
     const PROFILE_EXPLAINERS = {
       off: '<div class="row"><strong>Off</strong> — sync is disabled entirely. Nothing is sent to the Team Server for this profile.</div>',
-      soloFull: '<div class="row"><strong>Solo Full</strong> — readable workspace and machine names are always included, since only you see this data.</div>',
-      teamAnonymized: '<div class="row"><strong>Team Anonymized</strong> — workspace/machine <em>names</em> are withheld; only the opaque IDs are sent. Note this does not hide who uploaded it — see "Your identity" above.</div>',
-      teamPseudonymous: '<div class="row"><strong>Team Pseudonymous</strong> — workspace/machine names follow the "share readable names" setting below (off by default).</div>',
-      teamIdentified: '<div class="row"><strong>Team Identified</strong> — workspace/machine names follow the "share readable names" setting below (off by default). Combined with your always-on GitHub identity, this is the most transparent profile.</div>',
+      soloFull: '<div class="row"><strong>Solo Full</strong> — readable workspace and machine names are always included, since only you see this data. No separate per-user dimension is added (you are the only user).</div>',
+      teamAnonymized: '<div class="row"><strong>Team Anonymized</strong> — workspace/machine <em>names</em> are withheld; only the opaque IDs are sent, and no per-user dimension is added. Note this does not hide who uploaded it — see "Your identity" above.</div>',
+      teamPseudonymous: '<div class="row"><strong>Team Pseudonymous</strong> — adds a per-user dimension to the rollups. Workspace/machine names follow the "share readable names" setting below (off by default).</div>',
+      teamIdentified: '<div class="row"><strong>Team Identified</strong> — adds a per-user dimension to the rollups. Workspace/machine names follow the "share readable names" setting below (off by default). Combined with your always-on GitHub identity, this is the most transparent profile.</div>',
     };
     function updateProfileExplainer() {
       const profile = document.getElementById('sel-profile').value;
