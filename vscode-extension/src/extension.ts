@@ -310,7 +310,7 @@ import {
 	readRepoPrSnapshot,
 	writeRepoPrSnapshot,
 } from './repoPrCache';
-import { getConfiguredGitHubEnterpriseUri, getGitHubAuthProviderId } from './githubApiConfig';
+import { getConfiguredGitHubEnterpriseUri, getConfiguredGitHubWebOrigin, getGitHubAuthProviderId } from './githubApiConfig';
 
 // --- View regression ---
 import {
@@ -2017,7 +2017,12 @@ class CopilotTokenTracker implements vscode.Disposable {
 			// resolves false instead of throwing).
 			this.error('Failed to load repository PR stats', err);
 			const fallback = this._lastRepoPrStats ?? this.buildEmptyRepoPrStatsResult(since, !this._githubSignedOutByUser);
-			await this.publishRepoPrStats({ ...fallback, error: err instanceof Error ? err.message : String(err) });
+			// The webview renders the error box in place of the repo table whenever `error` is
+			// set, even if `repos` is populated — so only surface it when there is no cached data
+			// to fall back to. A transient snapshot-read/timeout failure would otherwise blank out
+			// perfectly good previously-loaded PR data behind a "failed to load" message.
+			const message = err instanceof Error ? err.message : String(err);
+			await this.publishRepoPrStats(fallback.repos.length > 0 ? fallback : { ...fallback, error: message });
 		}
 	}
 
@@ -2106,6 +2111,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 		this.log(`🔎 Refreshing repository PRs snapshot: discovered ${repos.length} GitHub repo(s) across ${workspacePaths.length} workspace path(s) in ${((Date.now() - discoveryStart) / 1000).toFixed(1)}s`);
 		await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsProgress', total: repos.length, done: 0 });
 
+		const webOrigin = getConfiguredGitHubWebOrigin();
 		const results: RepoPrInfo[] = [];
 		for (let i = 0; i < repos.length; i++) {
 			const { owner, repo } = repos[i];
@@ -2113,7 +2119,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 			const { prs, error } = await fetchRepoPrs(owner, repo, token, since);
 			this.log(`🔎 Fetched ${prs.length} PR(s) for ${owner}/${repo}${error ? ` — ${error}` : ''}`);
 			const stats = this.collectAiPrStats(prs, error, userLogin);
-			results.push({ owner, repo, repoUrl: `https://github.com/${owner}/${repo}`, ...stats, error });
+			results.push({ owner, repo, repoUrl: `${webOrigin}/${owner}/${repo}`, ...stats, error });
 			await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsProgress', total: repos.length, done: i + 1 });
 		}
 
