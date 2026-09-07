@@ -1142,8 +1142,16 @@ function formatCompactSessionNumber(value: number): { html: string; title: strin
 	return { html: formatCompact(value), title: formatNumber(value) };
 }
 
+/**
+ * Whether a raw model id refers to HydraFusion.
+ *
+ * Ids arrive in several shapes (`hydrafusion`, `copilot/hydrafusion`, `hydra-fusion`,
+ * a dated/preview suffix), so separators are stripped and the name must start the id —
+ * that keeps unrelated models that merely end in the word (`unrelated-hydrafusion`) out.
+ */
 function isHydraFusionModel(model: string): boolean {
-	return getModelLookupCandidates(model).some(candidate => candidate.toLowerCase() === 'hydrafusion');
+	return getModelLookupCandidates(model)
+		.some(candidate => candidate.toLowerCase().replace(/[-_. ]/g, '').startsWith('hydrafusion'));
 }
 
 /**
