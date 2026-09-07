@@ -5742,9 +5742,11 @@ function computeWorkspaceHealthGrouping(workspaces: WorkspaceCustomizationRow[])
 		return { visible: workspaces, otherWorkspaces: [] };
 	}
 	const sorted = [...workspaces].sort((a, b) => (Number(b.sessionCount) || 0) - (Number(a.sessionCount) || 0));
-	let splitIdx = sorted.length;
+	let splitIdx = -1;
 	let bestRatio = 1;
-	for (let i = 1; i < sorted.length; i++) {
+	// Only consider split points that would leave a tail of 3+ workspaces — a later, larger
+	// ratio near the very end of the list isn't a valid candidate since it wouldn't group anything.
+	for (let i = 1; i <= sorted.length - 3; i++) {
 		const prev = Number(sorted[i - 1].sessionCount) || 0;
 		const curr = Number(sorted[i].sessionCount) || 0;
 		if (prev <= 0) { continue; }
@@ -5754,14 +5756,13 @@ function computeWorkspaceHealthGrouping(workspaces: WorkspaceCustomizationRow[])
 			splitIdx = i;
 		}
 	}
-	const tailSize = sorted.length - splitIdx;
-	if (bestRatio < 2 || splitIdx < 1 || tailSize < 3) {
+	if (splitIdx < 1 || bestRatio < 2) {
 		return { visible: sorted, otherWorkspaces: [] };
 	}
 	return { visible: sorted.slice(0, splitIdx), otherWorkspaces: sorted.slice(splitIdx) };
 }
 
-function renderRepoListPane(listPane: HTMLElement, visibleWorkspaces: any[], hasSelectedRepository: boolean, otherWorkspaces: WorkspaceCustomizationRow[] = [], canCollapse: boolean = false): void {
+function renderRepoListPane(listPane: HTMLElement, visibleWorkspaces: WorkspaceCustomizationRow[], hasSelectedRepository: boolean, otherWorkspaces: WorkspaceCustomizationRow[] = [], canCollapse: boolean = false): void {
 	const colStyles = {
 		sessions: 'width: 60px; text-align: right; flex-shrink: 0; font-size: 11px; color: var(--text-primary);',
 		interactions: 'width: 80px; text-align: right; flex-shrink: 0; font-size: 11px; color: var(--text-primary);',
