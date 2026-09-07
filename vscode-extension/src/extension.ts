@@ -309,6 +309,7 @@ import {
 	getRepoPrCachePath,
 	isRepoPrEnvelopeUsable,
 	readRepoPrSnapshot,
+	shouldPreserveRepoPrSnapshotForEmptyDiscovery,
 	writeRepoPrSnapshot,
 } from './repoPrCache';
 import { getConfiguredGitHubEnterpriseUri, getConfiguredGitHubWebOrigin, getGitHubAuthProviderId } from './githubApiConfig';
@@ -2110,6 +2111,12 @@ class CopilotTokenTracker implements vscode.Disposable {
 		const discoveryStart = Date.now();
 		const repos = await discoverGitHubRepos(workspacePaths, getConfiguredGitHubEnterpriseUri());
 		this.log(`🔎 Refreshing repository PRs snapshot: discovered ${repos.length} GitHub repo(s) across ${workspacePaths.length} workspace path(s) in ${((Date.now() - discoveryStart) / 1000).toFixed(1)}s`);
+		const existingSnapshot = await readRepoPrSnapshot(cachePath);
+		if (shouldPreserveRepoPrSnapshotForEmptyDiscovery(existingSnapshot, since, repos.length)) {
+			this.log('🔎 Repository PR discovery found no workspace repos; preserving the existing shared snapshot');
+			await this.publishRepoPrStats(existingSnapshot!.data);
+			return;
+		}
 		await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsProgress', total: repos.length, done: 0 });
 
 		const webOrigin = getConfiguredGitHubWebOrigin();
