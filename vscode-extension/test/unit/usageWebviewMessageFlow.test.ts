@@ -330,6 +330,42 @@ test('renders repository PR fetch progress into the panel', async () => {
 	assert.ok(rendered?.includes('1/2'), `expected fetch progress, got: ${rendered}`);
 });
 
+test('renders the cleanup log with the worktree path for failing entries', async () => {
+	const harness = await bootWebview(buildStats());
+	const worktreePath = 'C:\\Users\\me\\.copilot\\copilot-worktrees\\repo\\feature-x';
+
+	harness.post({
+		command: 'worktreeFound',
+		worktree: {
+			path: worktreePath,
+			repoLabel: 'repo',
+			branch: 'feature-x',
+			lastCommit: 'abc1234',
+			lastCommitDate: '2026-09-07T10:00:00.000Z',
+			pushed: 'yes',
+			files: 1,
+			folders: 1,
+			bytes: 1024,
+		},
+	});
+	harness.post({ command: 'cleanupStarted', total: 1 });
+	harness.post({
+		command: 'cleanupWorktreeResult',
+		path: worktreePath,
+		branch: 'feature-x',
+		repoLabel: 'repo',
+		status: 'error',
+		reason: `Could not safely locate the main repository for "${worktreePath}".`,
+		processed: 1,
+		total: 1,
+	});
+	harness.post({ command: 'cleanupComplete' });
+
+	const rendered = harness.text('.worktree-cleanup-log');
+	assert.ok(rendered?.includes(worktreePath), `expected the worktree path in the cleanup log, got: ${rendered}`);
+	assert.ok(rendered?.includes('Could not safely locate the main repository'), 'expected the cleanup reason to stay visible');
+});
+
 test('accepts payloads relayed the way VS Code actually delivers them', async () => {
 	// The panel hung with `delivered=true` logged host-side because the webview's source-trust
 	// check compared window identities. VS Code relays from an internal window, so every

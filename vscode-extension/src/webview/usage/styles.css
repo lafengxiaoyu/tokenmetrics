@@ -1135,6 +1135,21 @@ background: var(--bg-tertiary);
 	background: var(--bg-tertiary);
 }
 
+.worktree-cleanup-log-details {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	flex: 1;
+}
+
+.worktree-cleanup-log-headline {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	align-items: baseline;
+}
+
 .worktree-cleanup-log-branch {
 	font-weight: 600;
 	font-family: var(--vscode-editor-font-family, monospace);
@@ -1144,9 +1159,16 @@ background: var(--bg-tertiary);
 	color: var(--text-muted);
 }
 
+.worktree-cleanup-log-path {
+	color: var(--text-muted);
+	font-size: 11px;
+	word-break: break-all;
+}
+
 .worktree-cleanup-log-reason {
 	color: var(--text-muted);
-	flex: 1;
+	font-size: 11px;
+	word-break: break-word;
 }
 
 .worktree-repo-actions {

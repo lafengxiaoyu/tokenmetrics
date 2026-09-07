@@ -8,6 +8,9 @@
  * the parts that are pure functions of their inputs, so they can be unit-tested directly,
  * following the same pattern as `insightsEngine.ts`.
  */
+import * as path from 'path';
+
+import { normalizeToRepoRoot } from '../../src/workspaceHelpers';
 
 /** One worktree's findings, as persisted after the background scan completes. */
 export interface WorktreeBackgroundScanEntry {
@@ -140,4 +143,37 @@ export function parseCleanupPushedWorktreesMessage(message: any): ParsedCleanupP
 export function buildCleanupConfirmTitle(count: number, scopeRepoLabel?: string): string {
 	const scopeText = scopeRepoLabel ? ` in "${scopeRepoLabel}"` : "";
 	return `Clean up ${count} pushed worktree${count === 1 ? "" : "s"}${scopeText}?`;
+}
+
+/** Evidence that a session workspace lives under the same repo root as a worktree candidate. */
+export interface WorktreeSessionRepoEvidence {
+	sessionWorkspacePath: string;
+	repoRoot: string;
+}
+
+/**
+ * Validate a worktree root against one or more session workspace paths.
+ *
+ * This accepts any session workspace path that normalizes to the same repo root as the worktree
+ * candidate, so a repo-scoped session can prove the repo even when the worktree itself is a
+ * transient subfolder.
+ */
+export function validateWorktreeRepoRootFromSessionPaths(
+	worktreePath: string,
+	sessionWorkspacePaths: (string | undefined)[],
+): WorktreeSessionRepoEvidence | undefined {
+	const worktreeRepoRoot = path.resolve(normalizeToRepoRoot(worktreePath));
+	for (const sessionWorkspacePath of sessionWorkspacePaths) {
+		const value = typeof sessionWorkspacePath === "string" ? sessionWorkspacePath.trim() : "";
+		if (!value) { continue; }
+		const sessionRepoRoot = path.resolve(normalizeToRepoRoot(value));
+		if (_normalizePathForComparison(sessionRepoRoot) === _normalizePathForComparison(worktreeRepoRoot)) {
+			return { sessionWorkspacePath: value, repoRoot: sessionRepoRoot };
+		}
+	}
+	return undefined;
+}
+
+function _normalizePathForComparison(value: string): string {
+	return path.resolve(value).replace(/\\/g, "/").toLowerCase();
 }

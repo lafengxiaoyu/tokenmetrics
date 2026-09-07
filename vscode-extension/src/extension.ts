@@ -121,6 +121,7 @@ import {
   sumWorktreeBytes as _sumWorktreeBytes,
   parseCleanupPushedWorktreesMessage as _parseCleanupPushedWorktreesMessage,
   buildCleanupConfirmTitle as _buildCleanupConfirmTitle,
+  validateWorktreeRepoRootFromSessionPaths as _validateWorktreeRepoRootFromSessionPaths,
   type WorktreeBackgroundScanResult,
 } from './worktreeBackgroundScan';
 import { scanWorktreeRootsWithTimeout as _scanWorktreeRootsWithTimeout } from './worktreeScan';
@@ -10848,30 +10849,66 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
    * worktree is reported as "skipped", not force-removed.
    */
   private async cleanupSinglePushedWorktree(worktreePath: string): Promise<{ status: "deleted" | "skipped" | "error"; reason?: string }> {
+    const sessionEvidence = await this.findSessionRepoEvidenceForWorktree(worktreePath);
     const mainRepoRoot = await this.resolveMainRepoRoot(worktreePath);
-    if (!mainRepoRoot || path.resolve(mainRepoRoot).toLowerCase() === path.resolve(worktreePath).toLowerCase()) {
-      return { status: "error", reason: "Could not safely locate the main repository." };
+    const validatedMainRepoRoot = mainRepoRoot ?? sessionEvidence?.repoRoot;
+    if (!validatedMainRepoRoot || _normalizePathForDedup(path.resolve(validatedMainRepoRoot)) === _normalizePathForDedup(path.resolve(worktreePath))) {
+      return { status: "error", reason: `Could not safely locate the main repository for "${worktreePath}".` };
+    }
+    if (mainRepoRoot && sessionEvidence && _normalizePathForDedup(path.resolve(mainRepoRoot)) !== _normalizePathForDedup(path.resolve(sessionEvidence.repoRoot))) {
+      return {
+        status: "error",
+        reason: `Repo validation failed for "${worktreePath}": git resolved "${mainRepoRoot}" but session "${sessionEvidence.sessionWorkspacePath}" points to "${sessionEvidence.repoRoot}".`,
+      };
     }
 
     const pushed = await this.getWorktreePushedStatus(worktreePath);
     if (pushed !== "yes") {
       return {
         status: "skipped",
-        reason: pushed === "no" ? "Has commits not pushed to any remote." : "Push status could not be confirmed.",
+        reason: pushed === "no"
+          ? `Worktree at "${worktreePath}" has commits not pushed to any remote.`
+          : `Could not confirm push status for worktree at "${worktreePath}".`,
       };
     }
 
-    let result = await this.removeGitWorktree(mainRepoRoot, worktreePath, false);
+    let result = await this.removeGitWorktree(validatedMainRepoRoot, worktreePath, false);
     if (!result.ok && /modified or untracked/i.test(result.stderr)) {
       return { status: "skipped", reason: "Has uncommitted or untracked changes." };
     }
     if (!result.ok && this.isWorktreeDirectoryRemovalFailure(result.stderr)) {
-      result = await this.removeWorktreeDirectoryFallback(mainRepoRoot, worktreePath);
+      result = await this.removeWorktreeDirectoryFallback(validatedMainRepoRoot, worktreePath);
     }
     if (!result.ok) {
-      return { status: "error", reason: result.stderr || "unknown error" };
+      return { status: "error", reason: `Could not delete worktree at "${worktreePath}": ${result.stderr || "unknown error"}` };
     }
     return { status: "deleted" };
+  }
+
+  private getKnownSessionWorkspacePaths(): string[] {
+    return this.diagnosticsCachedFiles
+      .map((details) => typeof details.workspacePath === "string" ? details.workspacePath.trim() : "")
+      .filter((value): value is string => value.length > 0);
+  }
+
+  private async findSessionRepoEvidenceForWorktree(worktreePath: string): Promise<{ sessionWorkspacePath: string; repoRoot: string } | undefined> {
+    const cachedMatch = _validateWorktreeRepoRootFromSessionPaths(worktreePath, this.getKnownSessionWorkspacePaths());
+    if (cachedMatch) { return cachedMatch; }
+
+    const sessionFiles = await this.sessionDiscovery.getCopilotSessionFiles();
+    const maxFilesToInspect = 25;
+    for (const sessionFile of sessionFiles.slice(0, maxFilesToInspect)) {
+      try {
+        const details = await this.getSessionFileDetails(sessionFile);
+        if (!details.workspacePath) { continue; }
+        const match = _validateWorktreeRepoRootFromSessionPaths(worktreePath, [details.workspacePath]);
+        if (match) { return match; }
+      } catch {
+        // Ignore individual session parse failures; this is only a best-effort validation path.
+      }
+    }
+
+    return undefined;
   }
 
   private async confirmDeleteWorktree(worktreePath: string, branch: string, repoLabel: string, pushed: "yes" | "no" | "?"): Promise<boolean> {
