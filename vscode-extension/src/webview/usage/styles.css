@@ -89,10 +89,6 @@ body {
 	background: var(--list-hover-bg);
 }
 
-.automatic-compactions-card--active {
-	border-color: var(--warning-color, #cca700);
-}
-
 .automatic-compactions-label {
 	font-size: 13px;
 	font-weight: 700;
