@@ -36,7 +36,8 @@ Per-component guides and READMEs.
 | [vscode-extension/DESIGN.md](vscode-extension/DESIGN.md) | VS Code extension UI design system (DESIGN.md spec) |
 | [vscode-extension/WEBVIEW-MESSAGING.md](vscode-extension/WEBVIEW-MESSAGING.md) | How data reaches a webview panel: trust model, readiness/replay, diagnostics, companion-extension impact |
 | [visual-studio/](visual-studio/README.md) | Visual Studio extension guide |
-| [sharing-server/](sharing-server/README.md) | Sharing server guide |
+| [sharing-server/](sharing-server/README.md) | Sharing server setup, personal dashboard and Team Insights |
+| [Sharing server data separation contract](../sharing-server/AGENTS.md) | Authoritative server privacy, comparison semantics and coding/testing requirements |
 | [specs/backend.md](specs/backend.md) | Backend API specification |
 | [specs/nonCopilotFilesDetection.md](specs/nonCopilotFilesDetection.md) | Non-Copilot file detection spec |
 
