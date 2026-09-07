@@ -459,8 +459,12 @@ export class KiloDataAccess {
 		// Use the first message's creation time as the session timestamp.
 		// Messages store their timestamp in the nested `time.created` field.
 		let timestamp = Date.now();
-		if (messages.length > 0 && messages[0].time?.created) {
-			timestamp = messages[0].time.created;
+		const created = messages[0]?.time?.created;
+		if (typeof created === 'number') {
+			timestamp = created;
+		} else if (typeof created === 'string') {
+			const parsed = Date.parse(created);
+			if (!Number.isNaN(parsed)) { timestamp = parsed; }
 		}
 
 		const { tokens } = this.getTokensFromKiloMessages(messages);
