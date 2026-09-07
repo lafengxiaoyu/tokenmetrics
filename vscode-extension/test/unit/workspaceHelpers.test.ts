@@ -348,7 +348,8 @@ import {
         globToRegExp,
         getEditorTypeFromPath,
         detectEditorSource,
-        detectClaudeCodeEditorVariant
+        detectClaudeCodeEditorVariant,
+        refineEditorLabelForInteractionModeSplit
 } from '../../../src/workspaceHelpers';
 
 // ── extractWorkspaceIdFromSessionPath ───────────────────────────────────
@@ -466,6 +467,53 @@ test('detectClaudeCodeEditorVariant: defaults to Claude Code when file is missin
         } finally {
                 fs.rmSync(dir, { recursive: true, force: true });
         }
+});
+
+// ── refineEditorLabelForInteractionModeSplit ─────────────────────────────
+
+test('refineEditorLabelForInteractionModeSplit: relabels Claude Code as Claude (VS Code)', () => {
+        assert.equal(refineEditorLabelForInteractionModeSplit('/home/user/.claude/projects/hash/session.jsonl', 'Claude Code'), 'Claude (VS Code)');
+});
+
+test('refineEditorLabelForInteractionModeSplit: leaves Claude Desktop and Claude Code CLI untouched', () => {
+        assert.equal(refineEditorLabelForInteractionModeSplit('/home/user/.claude/projects/hash/session.jsonl', 'Claude Desktop'), 'Claude Desktop');
+        assert.equal(refineEditorLabelForInteractionModeSplit('/home/user/.claude/projects/hash/session.jsonl', 'Claude Code CLI'), 'Claude Code CLI');
+});
+
+test('refineEditorLabelForInteractionModeSplit: relabels Copilot CLI as Copilot App when workspace.yaml marks the desktop app', () => {
+        const dir = fs.mkdtempSync(path.join(process.cwd(), 'copilot-app-'));
+        const sessionDir = path.join(dir, '.copilot', 'session-state', 'abc');
+        fs.mkdirSync(sessionDir, { recursive: true });
+        const file = path.join(sessionDir, 'events.jsonl');
+        fs.writeFileSync(file, '');
+        fs.writeFileSync(path.join(sessionDir, 'workspace.yaml'), 'cwd: /repo\nclient_name: github/autopilot\n');
+        try {
+                assert.equal(refineEditorLabelForInteractionModeSplit(file, 'Copilot CLI'), 'Copilot App');
+        } finally {
+                fs.rmSync(dir, { recursive: true, force: true });
+        }
+});
+
+test('refineEditorLabelForInteractionModeSplit: leaves Copilot CLI untouched for plain terminal CLI sessions', () => {
+        const dir = fs.mkdtempSync(path.join(process.cwd(), 'copilot-cli-'));
+        const sessionDir = path.join(dir, '.copilot', 'session-state', 'abc');
+        fs.mkdirSync(sessionDir, { recursive: true });
+        const file = path.join(sessionDir, 'events.jsonl');
+        fs.writeFileSync(file, '');
+        fs.writeFileSync(path.join(sessionDir, 'workspace.yaml'), 'cwd: /repo\nclient_name: github/cli\n');
+        try {
+                assert.equal(refineEditorLabelForInteractionModeSplit(file, 'Copilot CLI'), 'Copilot CLI');
+        } finally {
+                fs.rmSync(dir, { recursive: true, force: true });
+        }
+});
+
+test('refineEditorLabelForInteractionModeSplit: leaves Copilot CLI untouched when workspace.yaml is missing', () => {
+        assert.equal(refineEditorLabelForInteractionModeSplit('/nonexistent/path/session-state/abc/events.jsonl', 'Copilot CLI'), 'Copilot CLI');
+});
+
+test('refineEditorLabelForInteractionModeSplit: leaves unrelated editor labels untouched', () => {
+        assert.equal(refineEditorLabelForInteractionModeSplit('/home/user/Code/User/workspaceStorage/abc/session.json', 'VS Code'), 'VS Code');
 });
 
 test('getEditorTypeFromPath: detects Cursor', () => {
