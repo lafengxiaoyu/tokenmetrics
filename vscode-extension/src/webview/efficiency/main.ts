@@ -263,8 +263,6 @@ function renderAttributionTab(d: EfficiencyViewData): string {
 		return `<p class="eff-section-note">Not enough data to decompose the cost change — both compared windows need at least one session with token data.</p>`;
 	}
 	const maxAbs = Math.max(Math.abs(a.volumeEffect), Math.abs(a.efficiencyEffect), Math.abs(a.mixEffect), 0.01);
-	const afterVolume = a.prev.cost + a.volumeEffect;
-	const afterEfficiency = afterVolume + a.efficiencyEffect;
 	const shifts = a.modelShifts.length === 0 ? '' : `
 		<h3>Model mix movement</h3>
 		<table class="attr-shift-table">
@@ -286,7 +284,6 @@ function renderAttributionTab(d: EfficiencyViewData): string {
 			<div class="attr-stat"><div class="stat-label">${escapeHtml(capitalizeFirst(d.attributionWindows.cur))}</div><div class="stat-value">$${a.cur.cost.toFixed(2)}</div><div class="stat-sub">${escapeHtml(d.attributionWindows.curRange)} · ${a.cur.sessions} sessions · ${formatCompact(a.cur.tokens)} tokens</div></div>
 			<div class="attr-stat"><div class="stat-label">Change</div><div class="stat-value">${fmtMoney(a.deltaCost)}</div><div class="stat-sub">blended rate ${a.prev.dollarsPerMTokens.toFixed(2)} → ${a.cur.dollarsPerMTokens.toFixed(2)} $/M tokens</div></div>
 		</div>
-		<div class="attr-waterfall"><span>Starting cost <b>$${a.prev.cost.toFixed(2)}</b></span><span>After session count <b>$${afterVolume.toFixed(2)}</b></span><span>After session size <b>$${afterEfficiency.toFixed(2)}</b></span><span>After model mix <b>$${a.cur.cost.toFixed(2)}</b></span></div>
 		<div class="attr-bars">
 			${attrBar('Volume (session count)', `${a.prev.sessions.toLocaleString()} → ${a.cur.sessions.toLocaleString()} sessions`, a.volumeEffect, maxAbs, `Session count went from ${a.prev.sessions} to ${a.cur.sessions}.`)}
 			${attrBar('Session size (tokens/session)', `${formatCompact(a.prev.tokensPerSession)} → ${formatCompact(a.cur.tokensPerSession)} tokens/session`, a.efficiencyEffect, maxAbs, `Tokens per session went from ${Math.round(a.prev.tokensPerSession)} to ${Math.round(a.cur.tokensPerSession)}.`)}
