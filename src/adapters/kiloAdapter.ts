@@ -6,6 +6,7 @@ import { KiloDataAccess } from '../kilo';
 import { createEmptyContextRefs } from '../tokenEstimation';
 import { createEmptySessionUsageAnalysis, applyModelTierClassification } from '../usageAnalysis';
 import { pathExists } from '../utils/fsAsync';
+import { isUnsafeObjectKey } from '../utils/protoGuard';
 
 export class KiloAdapter implements IEcosystemAdapter, IDiscoverableEcosystem, IAnalyzableEcosystem {
 	readonly id = 'kilo';
@@ -215,6 +216,7 @@ export class KiloAdapter implements IEcosystemAdapter, IDiscoverableEcosystem, I
 		const parts = await this.kilo.getKiloPartsForMessage(msg.id);
 		for (const part of parts) {
 			if (part.type !== 'tool' || !part.tool) { continue; }
+			if (typeof part.tool !== 'string' || isUnsafeObjectKey(part.tool)) { continue; }
 			analysis.toolCalls.total++;
 			analysis.toolCalls.byTool[part.tool] = (analysis.toolCalls.byTool[part.tool] || 0) + 1;
 		}

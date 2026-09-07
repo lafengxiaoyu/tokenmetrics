@@ -202,6 +202,42 @@ test('KiloAdapter.handles: rejects OpenCode paths and unrelated paths', () => {
     assert.ok(!kiloAdapter.handles(path.join(os.homedir(), '.claude', 'projects', 'hash', 'abc.jsonl')));
 });
 
+test('KiloDataAccess: coerces numeric token strings and ISO timestamps', async () => {
+    const dataAccess = new KiloDataAccess(null as any);
+    dataAccess.getKiloMessagesForSession = async () => [
+        { id: 'user-1', role: 'user', time: { created: '2026-09-07T12:00:00.000Z' } },
+        {
+            id: 'assistant-1', role: 'assistant', parentID: 'user-1', modelID: 'test-model',
+            tokens: { total: '150', output: '20', reasoning: '5', cache: { read: '10', write: '3' } }
+        }
+    ];
+
+    const result = await dataAccess.getKiloSessionData('kilo.db#ses_test');
+
+    assert.equal(result.timestamp, Date.parse('2026-09-07T12:00:00.000Z'));
+    assert.equal(result.tokens, 150);
+    assert.equal(result.modelUsage['test-model'].inputTokens, 125);
+    assert.equal(result.modelUsage['test-model'].outputTokens, 25);
+    assert.equal(result.modelUsage['test-model'].cachedReadTokens, 10);
+    assert.equal(result.modelUsage['test-model'].cacheCreationTokens, 3);
+});
+
+test('KiloAdapter.analyzeUsage: ignores unsafe tool names', async () => {
+    const dataAccess = new KiloDataAccess(null as any);
+    dataAccess.getKiloMessagesForSession = async () => [{ id: 'assistant-1', role: 'assistant', modelID: 'test-model' }];
+    dataAccess.getKiloPartsForMessage = async () => [
+        { type: 'tool', tool: '__proto__' },
+        { type: 'tool', tool: 'read_file' }
+    ];
+    const adapter = new KiloAdapter(dataAccess);
+
+    const analysis = await adapter.analyzeUsage('kilo.db#ses_test', { modelPricing: {}, toolNameMap: {} });
+
+    assert.equal(analysis.toolCalls.total, 1);
+    assert.deepEqual(analysis.toolCalls.byTool, { read_file: 1 });
+    assert.equal(Object.prototype.hasOwnProperty.call(analysis.toolCalls.byTool, '__proto__'), false);
+});
+
 test('ContinueAdapter.handles: recognises ~/.continue/sessions paths', () => {
     const p = path.join(os.homedir(), '.continue', 'sessions', 'abc123.json');
     assert.ok(continueAdapter.handles(p));
