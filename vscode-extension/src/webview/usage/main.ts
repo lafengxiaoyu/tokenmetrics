@@ -2324,13 +2324,25 @@ function handleWorktreeMessage(message: any): void {
 	if (handler) { handler(message); }
 }
 
+/**
+ * Tells the host which subview the user is looking at, so the what's-new
+ * announcer can stay quiet about tabs they already found. Fire-and-forget.
+ */
+function reportTabOpened(tab: string): void {
+	vscode.postMessage({ command: 'viewTabOpened', view: 'usage', tab });
+}
+
 function setupTabs(): void {
 	const tabButtons = document.querySelectorAll<HTMLElement>('.tab-button');
+	// The tab that is already on screen counts as opened — the user is reading it
+	// right now, whether or not they clicked anything to get here.
+	reportTabOpened(activeTab);
 	tabButtons.forEach(button => {
 		button.addEventListener('click', () => {
 			const tab = button.getAttribute('data-tab');
 			if (!tab) { return; }
 			activeTab = tab;
+			reportTabOpened(tab);
 			tabButtons.forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-tab') === tab));
 			document.querySelectorAll<HTMLElement>('.tab-panel').forEach(panel => {
 				panel.style.display = 'none';
@@ -3495,7 +3507,7 @@ function buildRepeatedTaskClusterHtml(cluster: RepeatedTaskCluster): string {
 function buildSkillSuggestionsSectionHtml(report: RepeatedTaskReport | null): string {
 	if (!report || report.clusters.length === 0) { return ''; }
 	return `
-		<div class="section">
+		<div class="section" id="section-skill-suggestions">
 			<div class="section-title"><span>🧩</span><span>Skill Suggestions</span></div>
 			<div class="section-subtitle">
 				Tasks you keep prompting for across sessions (first prompt per session, ${report.sessionsScanned} sessions scanned).

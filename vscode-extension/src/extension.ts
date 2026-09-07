@@ -343,6 +343,23 @@ import { buildRecentSessionBuckets as bucketRecentSessions } from '../../src/rec
 import { determineOnboardingAction } from './onboarding';
 import { mergeNotifiedEditors, mergeSeenEditors } from './editorDiscovery';
 import { TtftScanResultCache } from './ttftAnalysisCache';
+import {
+	WHATS_NEW_RELEASES,
+	WHATS_NEW_MAX_RELEASES,
+	findFeature,
+	type FeatureSurface,
+	type FeatureViewId,
+	type WhatsNewFeature,
+	type WhatsNewRelease,
+} from './whatsNew/catalog';
+import {
+	EMPTY_WHATS_NEW_STATE,
+	planAnnouncement,
+	reconcileVersion,
+	sanitizeState,
+	type WhatsNewState,
+} from './whatsNew/announcer';
+import { hasVisitedSince, recordVisit, sanitizeVisits, type ViewVisitMap } from './whatsNew/visits';
 
 type LocalViewRegressionProbeResult = {
   pass: boolean;
@@ -486,6 +503,11 @@ interface WorktreeScanResult {
 
 type UsageAnalysisTab = 'activity' | 'tools' | 'health' | 'worktrees' | 'insights' | 'corrections';
 
+/** Narrows an arbitrary tab name (e.g. from the what's-new catalog) to one `showUsageAnalysisOnTab` accepts. */
+function isUsageAnalysisTab(tab: string): tab is UsageAnalysisTab {
+	return (['activity', 'tools', 'health', 'worktrees', 'insights', 'corrections'] as string[]).includes(tab);
+}
+
 class CopilotTokenTracker implements vscode.Disposable {
 	// Cache version - increment this when making changes that require cache invalidation.
 	// The merged task-classification + chart-state work changes cached session metadata and
@@ -604,6 +626,13 @@ class CopilotTokenTracker implements vscode.Disposable {
 	private fluencyLevelViewerPanel: vscode.WebviewPanel | undefined;
 	private environmentalPanel: vscode.WebviewPanel | undefined;
 	private efficiencyPanel: vscode.WebviewPanel | undefined;
+	private whatsNewPanel: vscode.WebviewPanel | undefined;
+	/** What the user has already been told about; see `src/whatsNew/announcer.ts`. */
+	private _whatsNewState: WhatsNewState = { ...EMPTY_WHATS_NEW_STATE };
+	/** Last time the user opened each view / tab; see `src/whatsNew/visits.ts`. */
+	private _viewVisits: ViewVisitMap = {};
+	/** Resolves once the persisted what's-new bookkeeping has been read and reconciled. */
+	private _whatsNewReady: Promise<void> | undefined;
 	/** Memoized per-session efficiency inputs; cleared wherever the daily/usage stat caches are. */
 	private lastEfficiencySessionInputs: EfficiencySessionInput[] | undefined;
 	private outputChannel!: vscode.OutputChannel;
@@ -943,6 +972,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 			this.fluencyLevelViewerPanel,
 			this.environmentalPanel,
 			this.efficiencyPanel,
+			this.whatsNewPanel,
 		];
 		for (const panel of panels) {
 			if (panel && this.isPanelOpen(panel)) {
@@ -979,6 +1009,20 @@ class CopilotTokenTracker implements vscode.Disposable {
 			showEnvironmental:      () => this.showEnvironmental(),
 			showEfficiency:         () => this.showEfficiency(),
 			showFluencyLevelViewer: () => this.showFluencyLevelViewer(),
+			showWhatsNew:           () => this.showWhatsNew(),
+			// Panels report their own tab switches so the what's-new announcer can tell
+			// which subviews the user has already found. Fire-and-forget by design: the
+			// webview must never wait on bookkeeping to render a tab.
+			viewTabOpened:          () => {
+				const view = typeof message.view === 'string' ? message.view : '';
+				const tab = typeof message.tab === 'string' ? message.tab : undefined;
+				if (view) { this.recordViewVisit(view as FeatureViewId, tab); }
+			},
+			openWhatsNewFeature:    async () => {
+				if (typeof message.featureId === 'string' && message.featureId) {
+					await this.openWhatsNewFeature(message.featureId);
+				}
+			},
 			openFile:               () => {
 				if (typeof message.path === 'string' && message.path) {
 					void vscode.window.showTextDocument(vscode.Uri.file(message.path));
@@ -1262,6 +1306,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 			{ id: 'maturity', title: 'Fluency Score', timeoutMs: 25000, expectations: { minRootChildren: 1, minBodyTextLength: 120, minRootTextLength: 80 }, dataPoints: [{ label: 'overall', value: maturityData.overallLabel }, { label: 'categories', value: maturityData.categories.length }, { label: 'with evidence', value: categoriesWithEvidence }], reset: () => this.maturityPanel?.dispose(), open: () => this.showMaturity() },
 			{ id: 'environmental', title: 'Environmental Impact', timeoutMs: 25000, expectations: { minRootChildren: 1, minBodyTextLength: 100, minRootTextLength: 70 }, dataPoints: [{ label: '30d tokens', value: detailedStats.last30Days.tokens }, { label: 'CO2 g', value: detailedStats.last30Days.co2.toFixed(2) }, { label: 'water L', value: detailedStats.last30Days.waterUsage.toFixed(2) }], reset: () => this.environmentalPanel?.dispose(), open: () => this.showEnvironmental() },
 			{ id: 'diagnostics', title: 'Diagnostics', timeoutMs: 30000, expectations: { minRootChildren: 1, minBodyTextLength: 140, minRootTextLength: 80, disallowTextPatterns: ['loading...'] }, dataPoints: [{ label: 'session files', value: sessionFiles.length }, { label: 'report lines', value: diagnosticReport.split(/\r?\n/).length }], reset: () => this.diagnosticsPanel?.dispose(), open: () => this.showDiagnosticReport() },
+			{ id: 'whatsnew', title: "What's New", timeoutMs: 20000, expectations: { minRootChildren: 1, minBodyTextLength: 120, minRootTextLength: 80 }, dataPoints: [{ label: 'releases', value: WHATS_NEW_RELEASES.slice(0, WHATS_NEW_MAX_RELEASES).length }, { label: 'features', value: WHATS_NEW_RELEASES.slice(0, WHATS_NEW_MAX_RELEASES).reduce((sum, r) => sum + r.features.length, 0) }], reset: () => this.whatsNewPanel?.dispose(), open: () => this.showWhatsNew() },
 			{ id: 'fluency-level-viewer', title: 'Fluency Level Viewer', timeoutMs: 25000, expectations: { minRootChildren: 1, minBodyTextLength: 120, minRootTextLength: 80 }, dataPoints: [{ label: 'categories', value: fluencyLevelData.categories.length }, { label: 'levels', value: totalFluencyLevels }], reset: () => this.fluencyLevelViewerPanel?.dispose(), open: () => this.showFluencyLevelViewer() },
 		];
 	}
@@ -1416,6 +1461,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 		this.initializeStatusBar();
 		this.setupConfigurationListener(context);
 		this.loadInsightState();
+		this._whatsNewReady = this.loadWhatsNewState();
 		this.scheduleInitialUpdate();
 		this.updateInterval = setInterval(() => {
 			this.updateTokenStats(true, true);
@@ -1455,6 +1501,257 @@ class CopilotTokenTracker implements vscode.Disposable {
 	private loadInsightState(): void {
 		this._insightStateBag = this.context.globalState.get<InsightStateBag>('insights.state', {});
 		this._lastInsightNudgeAt = this.context.globalState.get<string>('insights.lastNudgeAt', '') || null;
+	}
+
+	// ── What's New: view-visit tracking and one-at-a-time announcements ──────────
+	//
+	// Three pieces, all of them deliberately quiet:
+	//   1. Every panel open (and every tab switch inside one) stamps a timestamp,
+	//      so we can tell what the user found on their own.
+	//   2. On an upgrade, the catalog's features for the crossed versions are
+	//      queued — at most three per release.
+	//   3. The startup pass announces at most one queued feature per calendar day,
+	//      skipping anything the user has since opened themselves.
+	// The full rule set lives in `src/whatsNew/announcer.ts`; keep it there rather
+	// than growing conditions here.
+
+	/** Key under which the announcement bookkeeping is persisted. */
+	private static readonly WHATS_NEW_STATE_KEY = 'whatsNew.state';
+	/** Key under which the per-view/per-tab last-opened stamps are persisted. */
+	private static readonly WHATS_NEW_VISITS_KEY = 'whatsNew.viewVisits';
+
+	/**
+	 * Loads the what's-new bookkeeping and reconciles it against the running
+	 * version. Runs at construction so the queue is already correct by the time
+	 * `scheduleInitialUpdate` gets around to announcing anything.
+	 */
+	private async loadWhatsNewState(): Promise<void> {
+		try {
+			this._viewVisits = sanitizeVisits(this.context.globalState.get(CopilotTokenTracker.WHATS_NEW_VISITS_KEY));
+			const stored = sanitizeState(this.context.globalState.get(CopilotTokenTracker.WHATS_NEW_STATE_KEY));
+			const reconciled = reconcileVersion({
+				releases: WHATS_NEW_RELEASES,
+				state: stored,
+				currentVersion: packageJson.version,
+				now: new Date(),
+				// Everyone already using the extension when this bookkeeping shipped
+				// arrives here with no stored version. `hasSeenOnboarding` is the only
+				// signal that separates them from a genuinely new install, and it
+				// decides whether they hear about this release at all.
+				isFreshInstall: !this.context.globalState.get<boolean>('hasSeenOnboarding', false),
+			});
+			this._whatsNewState = reconciled;
+			if (reconciled !== stored) {
+				await this.context.globalState.update(CopilotTokenTracker.WHATS_NEW_STATE_KEY, reconciled);
+				if (reconciled.pending.length > stored.pending.length) {
+					this.log(`📣 What's New: queued ${reconciled.pending.length - stored.pending.length} feature(s) after upgrade to ${packageJson.version}`);
+				}
+			}
+		} catch (error) {
+			this.warn(`What's New state load failed: ${error}`);
+		}
+	}
+
+	/**
+	 * Records that the user is looking at a view (and, when given, a specific tab
+	 * inside it). Fire-and-forget: this is a hint for suppressing notifications,
+	 * never something a panel should wait on.
+	 */
+	private recordViewVisit(view: FeatureViewId, tab?: string): void {
+		const surface: FeatureSurface = tab ? { view, tab } : { view };
+		const updated = recordVisit(this._viewVisits, surface, new Date().toISOString());
+		if (updated === this._viewVisits) { return; }
+		this._viewVisits = updated;
+		void this.context.globalState.update(CopilotTokenTracker.WHATS_NEW_VISITS_KEY, updated)
+			.then(undefined, (error) => this.warn(`What's New visit save failed: ${error}`));
+	}
+
+	/** True when the user has not turned the new-feature notifications off. */
+	private whatsNewNotificationsEnabled(): boolean {
+		return vscode.workspace.getConfiguration('aiEngineeringFluency').get<boolean>('whatsNew.notificationsEnabled', true);
+	}
+
+	/**
+	 * Announces at most one new view/tab/section, at most once a day. The decision
+	 * — including which feature and whether to say anything at all — belongs to
+	 * `planAnnouncement`; this method only persists the outcome and shows the toast.
+	 *
+	 * State is written before the notification is shown, matching the older news
+	 * banners: an ignored notification still counts as shown, because re-offering
+	 * it on the next window open is the exact noise this feature exists to avoid.
+	 */
+	private async showWhatsNewNotification(): Promise<void> {
+		if (!this.whatsNewNotificationsEnabled()) { return; }
+		// The startup delay makes this all but certain already, but announcing
+		// against a half-loaded queue would double-announce, so make it explicit.
+		await this._whatsNewReady;
+		const plan = planAnnouncement({
+			releases: WHATS_NEW_RELEASES,
+			state: this._whatsNewState,
+			visits: this._viewVisits,
+			now: new Date(),
+		});
+		if (plan.state !== this._whatsNewState) {
+			this._whatsNewState = plan.state;
+			await this.context.globalState.update(CopilotTokenTracker.WHATS_NEW_STATE_KEY, plan.state);
+		}
+		const announcement = plan.announcement;
+		if (!announcement) { return; }
+
+		const { feature, release } = announcement;
+		this.log(`📣 What's New: announcing "${feature.title}" from ${release.version}`);
+		const kindLabel = feature.kind === 'view' ? 'view' : feature.kind === 'tab' ? 'tab' : 'section';
+		const takeMeThere = l10n.t('whatsNew.takeMeThere');
+		const seeAll = l10n.t('whatsNew.seeAll');
+		const choice = await vscode.window.showInformationMessage(
+			`✨ New ${kindLabel}: ${feature.title} — ${feature.description}`,
+			takeMeThere,
+			seeAll,
+		);
+		if (choice === takeMeThere) {
+			await this.openWhatsNewFeature(feature.id);
+		} else if (choice === seeAll) {
+			await this.showWhatsNew();
+		}
+	}
+
+	/** Opens the surface a catalog feature lives on, landing on its tab and section. */
+	private async openWhatsNewFeature(featureId: string): Promise<void> {
+		const entry = findFeature(featureId);
+		if (!entry) {
+			this.warn(`What's New: unknown feature id "${featureId}"`);
+			return;
+		}
+		const { view, tab, anchor } = entry.feature.surface;
+		if (view === 'usage' && tab && isUsageAnalysisTab(tab)) {
+			await this.showUsageAnalysisOnTab(tab, anchor);
+			return;
+		}
+		if (view === 'diagnostics') {
+			await this.showDiagnosticReport();
+			if (tab) { this.diagnosticsPanel?.webview.postMessage({ command: 'switchTab', tab }); }
+			return;
+		}
+		const openers: Partial<Record<FeatureViewId, () => Promise<void>>> = {
+			details: () => this.showDetails(),
+			chart: () => this.showChart(),
+			usage: () => this.showUsageAnalysis(),
+			maturity: () => this.showMaturity(),
+			efficiency: () => this.showEfficiency(),
+			environmental: () => this.showEnvironmental(),
+			// `logviewer` is deliberately absent: it only opens against a specific
+			// session file, so it can never be the destination of a catalog entry.
+			'fluency-level-viewer': () => this.showFluencyLevelViewer(),
+			dashboard: () => this.showDashboard(),
+			whatsnew: () => this.showWhatsNew(),
+		};
+		const open = openers[view];
+		if (open) { await open(); }
+	}
+
+	/** Projects the catalog into the shape the What's New webview renders. */
+	private buildWhatsNewViewData(): {
+		currentVersion: string;
+		releases: Array<{
+			version: string;
+			date: string | null;
+			headline: string;
+			isCurrent: boolean;
+			features: Array<{ id: string; title: string; description: string; kind: WhatsNewFeature['kind']; isUnseen: boolean }>;
+		}>;
+		backendConfigured: boolean;
+		localization: Record<string, string>;
+	} {
+		const projectFeature = (feature: WhatsNewFeature) => ({
+			id: feature.id,
+			title: feature.title,
+			description: feature.description,
+			kind: feature.kind,
+			// "Not opened yet" is measured from when this build first ran, not from
+			// the dawn of time: a tab visited a year ago on an older version says
+			// nothing about whether the user has seen what changed in it since.
+			isUnseen: !hasVisitedSince(this._viewVisits, feature.surface, this._whatsNewState.versionSeenAt),
+		});
+		const projectRelease = (release: WhatsNewRelease) => ({
+			version: release.version,
+			date: release.date,
+			headline: release.headline,
+			isCurrent: release.version === packageJson.version,
+			features: release.features.map(projectFeature),
+		});
+		return {
+			currentVersion: packageJson.version,
+			releases: WHATS_NEW_RELEASES.slice(0, WHATS_NEW_MAX_RELEASES).map(projectRelease),
+			backendConfigured: this.isBackendConfigured(),
+			localization: this.getWebviewLocalization(),
+		};
+	}
+
+	/** Opens the What's New panel: the last few releases, described in prose. */
+	public async showWhatsNew(): Promise<void> {
+		this.log("📣 Opening What's New view");
+		this.recordViewVisit('whatsnew');
+
+		if (this.whatsNewPanel) {
+			this.whatsNewPanel.reveal();
+			return;
+		}
+
+		this.whatsNewPanel = vscode.window.createWebviewPanel(
+			'copilotWhatsNew',
+			"What's New",
+			{ viewColumn: vscode.ViewColumn.One, preserveFocus: true },
+			{
+				enableScripts: true,
+				retainContextWhenHidden: false,
+				localResourceRoots: [
+					vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview'),
+					vscode.Uri.joinPath(this.extensionUri, 'media'),
+				],
+			}
+		);
+
+		this.whatsNewPanel.webview.onDidReceiveMessage(async (message) => {
+			if (this.handleLocalViewRegressionMessage(message)) { return; }
+			if (await this.dispatchSharedCommand(message)) { return; }
+			if (message.command === 'refresh' && this.whatsNewPanel) {
+				this.whatsNewPanel.webview.postMessage({ command: 'updateWhatsNew', data: this.buildWhatsNewViewData() });
+			}
+		});
+
+		this.whatsNewPanel.onDidDispose(() => {
+			this.log("📣 What's New view closed");
+			this.whatsNewPanel = undefined;
+		});
+
+		this.whatsNewPanel.webview.html = this.getWhatsNewHtml(this.whatsNewPanel.webview);
+	}
+
+	private getWhatsNewHtml(webview: vscode.Webview): string {
+		const nonce = getNonce();
+		const scriptUri = webview.asWebviewUri(
+			vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'whatsnew.js')
+		);
+		const initialData = JSON.stringify(this.buildWhatsNewViewData()).replace(/</g, '\\u003c');
+
+		return `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="UTF-8" />
+			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+			${buildCspMeta(webview, nonce)}
+			${getCodiconStylesheetTag(webview, this.extensionUri)}
+			<title>What's New</title>
+		</head>
+		<body>
+			<div id="root"></div>
+			<script nonce="${nonce}">window.__INITIAL_WHATSNEW__ = ${initialData};</script>
+			${this.getJsonConfigScript(nonce)}
+			${this.extensionPointButtonsScript(nonce)}
+			${this.getLocalViewRegressionProbeScript('whatsnew', nonce)}
+			<script nonce="${nonce}" src="${scriptUri}"></script>
+		</body>
+		</html>`;
 	}
 
 	private initializeOutputChannel(context: vscode.ExtensionContext): void {
@@ -1591,6 +1888,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 				await this.showFluencyScoreNewsBanner();
 				await this.showEfficiencyTabNewsBanner();
 				await this.showUnknownMcpToolsBanner();
+				await this.showWhatsNewNotification();
 			} catch (error) {
 				this.error('Error in initial update:', error);
 			}
@@ -7191,6 +7489,7 @@ private computeFallbackDailyRollup(
 
 	public async showDetails(): Promise<void> {
 		this.log('📊 Opening Details panel');
+		this.recordViewVisit('details');
 
 		// If panel already exists, just reveal it
 		if (this.detailsPanel) {
@@ -7272,6 +7571,7 @@ private computeFallbackDailyRollup(
 
 	public async showEnvironmental(): Promise<void> {
 		this.log('🌿 Opening Environmental Impact view');
+		this.recordViewVisit('environmental');
 
 		if (this.environmentalPanel) {
 			this.environmentalPanel.reveal();
@@ -7356,6 +7656,7 @@ private computeFallbackDailyRollup(
 
 	public async showChart(): Promise<void> {
 		this.log('📈 Opening Chart view');
+		this.recordViewVisit('chart');
 
 		// If panel already exists, just reveal it
 		if (this.chartPanel) {
@@ -7449,6 +7750,7 @@ private computeFallbackDailyRollup(
 
 	public async showUsageAnalysis(): Promise<void> {
 		this.log('📊 Opening Usage Analysis dashboard');
+		this.recordViewVisit('usage');
 		if (this.analysisPanel) {
 			this.log('📊 Revealing existing Usage Analysis panel');
 			this.analysisPanel.reveal(vscode.ViewColumn.One, false);
@@ -8368,6 +8670,7 @@ Return ONLY the JSON object, no markdown formatting, no explanations.`;
 
 	public async showMaturity(): Promise<void> {
 		this.log('🎯 Opening Copilot Fluency Score dashboard');
+		this.recordViewVisit('maturity');
 		if (this.maturityPanel) { this.maturityPanel.dispose(); this.maturityPanel = undefined; }
 		const isDebugMode = this.context.extensionMode === vscode.ExtensionMode.Development;
 		this.maturityPanel = vscode.window.createWebviewPanel(
@@ -8767,6 +9070,7 @@ private async shareTextToSocialPlatform(shareText: string, platform: 'linkedin' 
     const isDebugMode = false;
 
     this.log("🔍 Opening Scoring Guide");
+    this.recordViewVisit('fluency-level-viewer');
 
     // If panel already exists, dispose and recreate with fresh data
     if (this.fluencyLevelViewerPanel) {
@@ -8964,6 +9268,7 @@ private async shareTextToSocialPlatform(shareText: string, platform: 'linkedin' 
 	 */
 	public async showEfficiency(): Promise<void> {
 		this.log('⚡ Opening Efficiency view');
+		this.recordViewVisit('efficiency');
 
 		// Already open — just reveal it. Recomputing here would make re-focusing the
 		// tab as slow as a cold open; the Refresh button is the way to get new data.
@@ -9210,6 +9515,7 @@ private async shareTextToSocialPlatform(shareText: string, platform: 'linkedin' 
    */
   public async showDashboard(): Promise<void> {
     this.log("📊 Opening Team Dashboard");
+    this.recordViewVisit('dashboard');
     if (!this.isBackendConfigured()) {
       vscode.window.showWarningMessage("Team Dashboard requires backend sync to be configured. Please configure backend settings first.");
       return;
@@ -9994,6 +10300,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
 
   public async showDiagnosticReport(): Promise<void> {
     this.log("🔍 Opening Diagnostic Report");
+    this.recordViewVisit('diagnostics');
     if (this.diagnosticsPanel) {
       this.diagnosticsPanel.reveal();
       this.log("🔍 Diagnostic Report revealed (already exists)");
@@ -12346,6 +12653,13 @@ function registerSecondaryViewCommands(context: vscode.ExtensionContext, tokenTr
       await tokenTracker.showEfficiency();
     },
   );
+  const showWhatsNewCommand = vscode.commands.registerCommand(
+    "aiEngineeringFluency.showWhatsNew",
+    async () => {
+      tokenTracker.log("Show what's new command called");
+      await tokenTracker.showWhatsNew();
+    },
+  );
   const openMcpJsonCommand = vscode.commands.registerCommand(
     "aiEngineeringFluency.openMcpJson",
     async () => {
@@ -12353,7 +12667,7 @@ function registerSecondaryViewCommands(context: vscode.ExtensionContext, tokenTr
       await tokenTracker.openMcpJson();
     },
   );
-  context.subscriptions.push(showMaturityCommand, showDashboardCommand, showEnvironmentalCommand, showEfficiencyCommand, openMcpJsonCommand);
+  context.subscriptions.push(showMaturityCommand, showDashboardCommand, showEnvironmentalCommand, showEfficiencyCommand, showWhatsNewCommand, openMcpJsonCommand);
 }
 
 function registerUsageNavigationCommands(context: vscode.ExtensionContext, tokenTracker: CopilotTokenTracker): void {
