@@ -4060,9 +4060,14 @@ function renderWorktreeCleanupLog(): string {
 		const icon = e.status === "skipped" ? "⏭️" : "❌";
 		return `<div class="worktree-cleanup-log-row">
       <span>${icon}</span>
-      <span class="worktree-cleanup-log-branch">${escapeHtml(e.branch)}</span>
-      <span class="worktree-cleanup-log-repo">${escapeHtml(e.repoLabel)}</span>
-      <span class="worktree-cleanup-log-reason">${escapeHtml(e.reason || "")}</span>
+      <div class="worktree-cleanup-log-details">
+        <div class="worktree-cleanup-log-headline">
+          <span class="worktree-cleanup-log-branch">${escapeHtml(e.branch)}</span>
+          <span class="worktree-cleanup-log-repo">${escapeHtml(e.repoLabel)}</span>
+        </div>
+        <div class="worktree-cleanup-log-path">${escapeHtml(e.path)}</div>
+        <div class="worktree-cleanup-log-reason">${escapeHtml(e.reason || "")}</div>
+      </div>
     </div>`;
 	}).join("");
 	return `<div class="worktree-cleanup-log">${rows}</div>`;
