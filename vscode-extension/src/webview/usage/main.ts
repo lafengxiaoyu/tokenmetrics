@@ -723,6 +723,10 @@ type RepoPrStatsResult = {
   authenticated: boolean;
   since: string;
   error?: string;
+  /** When the snapshot was fetched from GitHub; empty string when it has never been fetched. */
+  fetchedAt?: string;
+  /** How often the snapshot is refreshed, so the UI can say when the next refresh is due. */
+  refreshIntervalMs?: number;
 };
 
 const EFFORT_DISPLAY_NAMES: Record<string, string> = {
@@ -2360,6 +2364,8 @@ function sanitizeRepoPrStatsData(input: unknown): RepoPrStatsResult {
 		authenticated: Boolean(src.authenticated),
 		since: typeof src.since === 'string' || typeof src.since === 'number' ? src.since : Date.now(),
 		error: typeof src.error === 'string' ? escapeHtml(src.error) : undefined,
+		fetchedAt: typeof src.fetchedAt === 'string' ? src.fetchedAt : '',
+		refreshIntervalMs: toSafeNumber(src.refreshIntervalMs),
 		repos: repos.map((repo) => {
 			const r = (repo && typeof repo === 'object') ? (repo as Record<string, unknown>) : {};
 			const aiDetails = Array.isArray(r.aiDetails) ? r.aiDetails : [];
@@ -2437,6 +2443,25 @@ function renderRepoPrRow(r: RepoPrInfo, cell: string, cellCenter: string): strin
 	</tr>`;
 }
 
+/**
+ * Freshness line for the snapshot. The data is fetched at most once an hour, by whichever VS Code
+ * window holds the repo-PRs lock, so the panel always says how old what it shows is.
+ */
+function repoPrSnapshotFreshnessHtml(data: RepoPrStatsResult): string {
+  const box = 'margin-bottom:12px; padding:8px 10px; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:6px; font-size:11px; color:var(--text-secondary);';
+  if (!data.fetchedAt) {
+    return `<div style="${box}">🕒 <strong>Not fetched yet.</strong> The snapshot is refreshed hourly by the main VS Code window — it will appear here once that first refresh completes.</div>`;
+  }
+  const fetchedMs = Date.parse(data.fetchedAt);
+  const nextRefresh = Number.isFinite(fetchedMs) && data.refreshIntervalMs
+    ? new Date(fetchedMs + data.refreshIntervalMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : 'unknown';
+  return `<div style="${box}">
+    🕒 Updated <strong>${escapeHtml(getTimeSince(data.fetchedAt))}</strong> · next refresh after ${escapeHtml(nextRefresh)}.
+    Cached and refreshed at most once an hour, by a single VS Code window, to keep GitHub API usage low.
+  </div>`;
+}
+
 function renderReposPrContent(data: RepoPrStatsResult): string {
 	const sinceDate = escapeHtml(new Date(data.since).toLocaleDateString());
 	if (data.error) {
@@ -2455,7 +2480,7 @@ function renderReposPrContent(data: RepoPrStatsResult): string {
 			</div>`;
 	}
 	if (data.repos.length === 0) {
-		return `
+		return `${repoPrSnapshotFreshnessHtml(data)}
 			<div style="margin-top:12px; font-size:12px; color:var(--text-secondary);">
 				No GitHub repositories detected in your workspace folders.
 			</div>`;
@@ -2468,6 +2493,7 @@ function renderReposPrContent(data: RepoPrStatsResult): string {
 	const rows = data.repos.map((r) => renderRepoPrRow(r, cell, cellCenter)).join('');
 
 	return `
+		${repoPrSnapshotFreshnessHtml(data)}
 		<div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px;">
 			Showing PRs created since ${sinceDate}.
 			Reviewer requests are only visible for <strong>open</strong> PRs — the GitHub API clears this field after a PR is merged or closed.

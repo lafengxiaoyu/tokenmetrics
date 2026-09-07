@@ -301,6 +301,15 @@ import {
 	readAgentTasksSnapshot,
 	writeAgentTasksSnapshot,
 } from './agentTasksCache';
+import {
+	REPO_PRS_CACHE_SCHEMA_VERSION,
+	REPO_PRS_REFRESH_INTERVAL_MS,
+	canServeRepoPrSnapshot,
+	getRepoPrCachePath,
+	isRepoPrEnvelopeUsable,
+	readRepoPrSnapshot,
+	writeRepoPrSnapshot,
+} from './repoPrCache';
 import { getConfiguredGitHubEnterpriseUri, getGitHubAuthProviderId } from './githubApiConfig';
 
 // --- View regression ---
@@ -717,8 +726,11 @@ class CopilotTokenTracker implements vscode.Disposable {
 		premium_interactions_remaining?: number;
 	} = {};
 
-	// Cached PR stats result for the repos tab
+	// Cached PR stats result for the repos tab (mirrors the shared snapshot on disk)
 	private _lastRepoPrStats?: RepoPrStatsResult;
+
+	// True while this window is refreshing the shared repository-PRs snapshot from the GitHub API
+	private _repoPrRefreshInFlight = false;
 
 	// Cached cloud agent sessions result for the cloud agent tab (mirrors the shared snapshot on disk)
 	private _lastAgentSessionsData?: AgentSessionsResult;
@@ -1901,9 +1913,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 			if (this.analysisPanel) {
 				const since = new Date();
 				since.setDate(since.getDate() - 30);
-				const result: RepoPrStatsResult = { repos: [], authenticated: false, since: since.toISOString() };
-				this._lastRepoPrStats = result;
-				await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsLoaded', data: result });
+				await this.publishRepoPrStats(this.buildEmptyRepoPrStatsResult(since, false));
 				await this.publishAgentSessions(this.buildEmptyAgentSessionsResult(since, false));
 			}
 		} catch (error) {
@@ -1946,12 +1956,45 @@ class CopilotTokenTracker implements vscode.Disposable {
 		return this.githubSession;
 	}
 
-	/** Load PR stats for all discovered GitHub repos and send results to the analysis panel. */
+	private repoPrStatsSince(): Date {
+		const since = new Date();
+		since.setDate(since.getDate() - 30);
+		return since;
+	}
+
+	/** Path of the cross-window Repository PRs snapshot shared by every window of this VS Code edition. */
+	private repoPrCachePath(): string {
+		return getRepoPrCachePath(this.context.globalStorageUri.fsPath, this.cacheManager.getCacheIdentifier());
+	}
+
+	/** An empty snapshot — `fetchedAt: ''` marks "never fetched", which the panel renders as pending. */
+	private buildEmptyRepoPrStatsResult(since: Date, authenticated: boolean): RepoPrStatsResult {
+		return { repos: [], authenticated, since: since.toISOString(), fetchedAt: '' };
+	}
+
+	/**
+	 * Remember and push a snapshot to the analysis panel, if one is open. The refresh interval is
+	 * stamped on here so the panel can show when the next refresh is due without duplicating the
+	 * cache policy.
+	 */
+	private async publishRepoPrStats(result: RepoPrStatsResult): Promise<void> {
+		const stamped: RepoPrStatsResult = { ...result, refreshIntervalMs: REPO_PRS_REFRESH_INTERVAL_MS };
+		this._lastRepoPrStats = stamped;
+		const { delivered, wasReady } = await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsLoaded', data: stamped });
+		this.log(`🔎 Repository PR stats posted for ${stamped.repos.length} repo(s) (delivered=${delivered}, webviewReady=${wasReady}, ${this._describeAnalysisPanel()})`);
+	}
+
+	/**
+	 * Show Repository PR stats in the analysis panel.
+	 *
+	 * This never calls GitHub itself: it serves the shared hourly snapshot (see `repoPrCache.ts`)
+	 * so opening the tab is instant and costs no API calls, then asks for a refresh, which only
+	 * happens if the snapshot is stale *and* this window wins the repo-PRs lock.
+	 */
 	private async loadRepoPrStats(): Promise<void> {
 		if (!this.analysisPanel) { return; }
 
-		const since = new Date();
-		since.setDate(since.getDate() - 30);
+		const since = this.repoPrStatsSince();
 		this.log('🔎 Loading repository PR stats (last 30 days)…');
 		try {
 			await this.collectAndPublishRepoPrStats(since);
@@ -1962,28 +2005,20 @@ class CopilotTokenTracker implements vscode.Disposable {
 			// tolerates the panel being disposed mid-flight (postMessage on a disposed webview
 			// resolves false instead of throwing).
 			this.error('Failed to load repository PR stats', err);
-			const result: RepoPrStatsResult = {
-				repos: [], authenticated: !this._githubSignedOutByUser, since: since.toISOString(),
-				error: err instanceof Error ? err.message : String(err),
-			};
-			this._lastRepoPrStats = result;
-			await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsLoaded', data: result });
+			const fallback = this._lastRepoPrStats ?? this.buildEmptyRepoPrStatsResult(since, !this._githubSignedOutByUser);
+			await this.publishRepoPrStats({ ...fallback, error: err instanceof Error ? err.message : String(err) });
 		}
 	}
 
 	private async collectAndPublishRepoPrStats(since: Date): Promise<void> {
 		if (this._githubSignedOutByUser) {
-			const result: RepoPrStatsResult = { repos: [], authenticated: false, since: since.toISOString() };
-			this._lastRepoPrStats = result;
-			await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsLoaded', data: result });
+			await this.publishRepoPrStats(this.buildEmptyRepoPrStatsResult(since, false));
 			return;
 		}
 
 		const session = await vscode.authentication.getSession(getGitHubAuthProviderId(), ['read:user'], { silent: true });
 		if (!session) {
-			const result: RepoPrStatsResult = { repos: [], authenticated: false, since: since.toISOString() };
-			this._lastRepoPrStats = result;
-			await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsLoaded', data: result });
+			await this.publishRepoPrStats(this.buildEmptyRepoPrStatsResult(since, false));
 			return;
 		}
 
@@ -1994,27 +2029,99 @@ class CopilotTokenTracker implements vscode.Disposable {
 			this.log(`✅ GitHub session synced from existing VS Code auth: ${session.account.label}`);
 		}
 
+		await this.publishRepoPrStats(this._lastRepoPrStats ?? this.buildEmptyRepoPrStatsResult(since, true));
+		const snapshot = await _withTimeout(
+			readRepoPrSnapshot(this.repoPrCachePath()),
+			10_000,
+			'Reading the repository PRs snapshot',
+		);
+		if (isRepoPrEnvelopeUsable(snapshot, since)) {
+			await this.publishRepoPrStats(snapshot!.data);
+		}
+
+		void this.maybeRefreshRepoPrStats().catch((err) => {
+			this.warn(`Repository PRs refresh scheduling failed: ${err}`);
+		});
+	}
+
+	/**
+	 * Refresh the Repository PRs snapshot from the GitHub API, if it is due.
+	 *
+	 * Collecting it costs a PR-list call (plus a commit-messages call per PR to detect
+	 * co-authored-by AI) for every discovered repo, so it is deliberately rationed: at most once
+	 * every REPO_PRS_REFRESH_INTERVAL_MS, and only in the window that wins the repo-PRs lock — the
+	 * other windows read that window's snapshot from global storage instead of repeating the calls.
+	 * Runs on extension start and on every cache refresh cycle (both leader-gated), plus whenever
+	 * the Repository PRs tab is opened.
+	 */
+	private async maybeRefreshRepoPrStats(): Promise<void> {
+		if (this._repoPrRefreshInFlight || this._githubSignedOutByUser) { return; }
+		const since = this.repoPrStatsSince();
+		const cachePath = this.repoPrCachePath();
+		if (canServeRepoPrSnapshot(await readRepoPrSnapshot(cachePath), since, Date.now())) { return; }
+
+		const session = await vscode.authentication.getSession(getGitHubAuthProviderId(), ['read:user'], { silent: true });
+		if (!session) { return; }
+
+		let acquired = false;
+		try { acquired = await this.cacheManager.acquireRepoPrLock(); }
+		catch (err) { this.warn(`Failed to acquire repo-PRs lock: ${err}`); }
+		if (!acquired) {
+			this.log('⏭️ Repository PRs refresh skipped — another window is refreshing the shared snapshot');
+			return;
+		}
+
+		this._repoPrRefreshInFlight = true;
+		// Heartbeat the lock: a slow API pass must not look stale to another window, which would
+		// let it start the same collection in parallel.
+		const heartbeat = setInterval(() => { void this.cacheManager.renewRepoPrLock(); }, 60 * 1000);
+		try {
+			await this.refreshRepoPrStatsSnapshot(session.accessToken, session.account.label, since, cachePath);
+		} catch (err) {
+			this.warn(`Repository PRs refresh failed: ${err}`);
+		} finally {
+			clearInterval(heartbeat);
+			this._repoPrRefreshInFlight = false;
+			try { await this.cacheManager.releaseRepoPrLock(); }
+			catch (err) { this.warn(`Failed to release repo-PRs lock: ${err}`); }
+		}
+	}
+
+	/** Collect the snapshot from every discovered workspace repo, write it to disk and publish it. */
+	private async refreshRepoPrStatsSnapshot(token: string, userLogin: string | undefined, since: Date, cachePath: string): Promise<void> {
 		const workspacePaths = this._buildWorkspacePaths();
 		const discoveryStart = Date.now();
 		const repos = await discoverGitHubRepos(workspacePaths, getConfiguredGitHubEnterpriseUri());
-		this.log(`🔎 Discovered ${repos.length} GitHub repo(s) across ${workspacePaths.length} workspace path(s) in ${((Date.now() - discoveryStart) / 1000).toFixed(1)}s`);
+		this.log(`🔎 Refreshing repository PRs snapshot: discovered ${repos.length} GitHub repo(s) across ${workspacePaths.length} workspace path(s) in ${((Date.now() - discoveryStart) / 1000).toFixed(1)}s`);
 		await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsProgress', total: repos.length, done: 0 });
 
 		const results: RepoPrInfo[] = [];
 		for (let i = 0; i < repos.length; i++) {
 			const { owner, repo } = repos[i];
 			this.log(`🔎 Fetching PRs for ${owner}/${repo} (${i + 1}/${repos.length})…`);
-			const { prs, error } = await fetchRepoPrs(owner, repo, session.accessToken, since);
+			const { prs, error } = await fetchRepoPrs(owner, repo, token, since);
 			this.log(`🔎 Fetched ${prs.length} PR(s) for ${owner}/${repo}${error ? ` — ${error}` : ''}`);
-			const stats = this.collectAiPrStats(prs, error, session.account.label);
+			const stats = this.collectAiPrStats(prs, error, userLogin);
 			results.push({ owner, repo, repoUrl: `https://github.com/${owner}/${repo}`, ...stats, error });
 			await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsProgress', total: repos.length, done: i + 1 });
 		}
 
-		const result: RepoPrStatsResult = { repos: results, authenticated: true, since: since.toISOString() };
-		this._lastRepoPrStats = result;
-		const { delivered, wasReady } = await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsLoaded', data: result });
-		this.log(`🔎 Repository PR stats posted for ${results.length} repo(s) (delivered=${delivered}, webviewReady=${wasReady}, ${this._describeAnalysisPanel()})`);
+		const fetchedAt = new Date().toISOString();
+		const result: RepoPrStatsResult = { repos: results, authenticated: true, since: since.toISOString(), fetchedAt };
+
+		try {
+			await writeRepoPrSnapshot(cachePath, {
+				schemaVersion: REPO_PRS_CACHE_SCHEMA_VERSION,
+				fetchedAt,
+				since: result.since,
+				data: result,
+			});
+		} catch (err) {
+			this.warn(`Failed to write repository PRs snapshot: ${err}`);
+		}
+
+		this.log(`🔎 Repository PRs snapshot: ${results.length} repo(s)`);
+		await this.publishRepoPrStats(result);
 	}
 
 	/** Classify one PR, pushing any AI detail rows and returning its contribution to the counters. */
@@ -2788,11 +2895,13 @@ class CopilotTokenTracker implements vscode.Disposable {
 		// Piggyback the once-daily background worktree scan on the same leader election: only
 		// the window that won this refresh's leader lock may start it, and it runs detached
 		// (drip-throttled, can take far longer than this refresh cycle) so it never blocks it.
-		// The hourly cloud-agent snapshot refresh rides along for the same reason: it is leader-only
-		// GitHub API work that must not hold up the parse, and this also gives it a run at startup.
+		// The hourly cloud-agent and repository-PRs snapshot refreshes ride along for the same
+		// reason: they are leader-only GitHub API work that must not hold up the parse, and this
+		// also gives them a run at startup.
 		if (isLeader) {
 			void this.maybeStartBackgroundWorktreeScan();
 			void this.maybeRefreshAgentSessions();
+			void this.maybeRefreshRepoPrStats();
 		}
 
 		try {
