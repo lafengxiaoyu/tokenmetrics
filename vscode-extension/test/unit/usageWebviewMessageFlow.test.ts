@@ -397,12 +397,17 @@ test('marks HydraFusion sessions in the recent sessions list', async () => {
 	};
 	stats.todaySessions = [
 		hydraFusionSession,
-		{ ...hydraFusionSession, title: 'Unrelated task', models: ['unrelated-hydrafusion'] },
+		// Id variants seen in real session logs must all be recognized...
+		{ ...hydraFusionSession, title: 'Prefixed task', filePath: 'b.jsonl', models: ['copilot/hydrafusion'] },
+		{ ...hydraFusionSession, title: 'Separated task', filePath: 'c.jsonl', models: ['hydra-fusion'] },
+		{ ...hydraFusionSession, title: 'Suffixed task', filePath: 'd.jsonl', models: ['hydrafusion-preview'] },
+		// ...while a different model that merely ends in the name must not be.
+		{ ...hydraFusionSession, title: 'Unrelated task', filePath: 'e.jsonl', models: ['unrelated-hydrafusion'] },
 	];
 	const harness = await bootWebview(stats);
 
 	const badges = harness.window.document.querySelectorAll('.hydrafusion-session-badge');
-	assert.equal(badges.length, 1, 'only the HydraFusion model identifier should be marked');
+	assert.equal(badges.length, 4, 'every HydraFusion id variant should be marked, and only those');
 	const badge = badges[0];
 	assert.ok(badge, 'expects a marker for HydraFusion sessions');
 	assert.equal(badge.textContent, 'HydraFusion');

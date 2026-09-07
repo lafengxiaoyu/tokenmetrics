@@ -339,7 +339,7 @@ import { getNonce, buildCspMeta, getCodiconStylesheetTag } from './utils/webview
 import { getAzureTableStorageEndpoint } from './utils/azureEndpoints';
 import { isGuidMcpTool, isMcpFamilyResolvedTool, lookupKnownToolName } from '../../src/utils/toolUtils';
 import { toLocalDayKey } from '../../src/utils/dayKeys';
-import { buildRecentSessionBuckets as bucketRecentSessions } from '../../src/recentSessions';
+import { buildRecentSessionBuckets as bucketRecentSessions, collectSessionModelIds } from '../../src/recentSessions';
 import { determineOnboardingAction } from './onboarding';
 import { mergeNotifiedEditors, mergeSeenEditors } from './editorDiscovery';
 import { TtftScanResultCache } from './ttftAnalysisCache';
@@ -5173,7 +5173,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 			thinkingTokens: sessionData.thinkingTokens || 0, cachedTokens: cachedTok,
 			totalTokens: computeSessionTotalTokens(inputTok, outputTok, sessionData.thinkingTokens || 0),
 			estimatedCost: sessionData.copilotExactCostDollars ?? this.calculateEstimatedCost(modelUsage),
-			editor: this.detectEditorSource(sessionFile), models: Object.keys(modelUsage),
+			editor: this.detectEditorSource(sessionFile), models: collectSessionModelIds(modelUsage, analysis?.modelEfficiency),
 			lastActivity: sessionData.lastInteraction || new Date(mtime).toISOString(),
 			...(sessionData.truncationCount ? { truncationCount: sessionData.truncationCount } : {}),
 			...(sessionData.maxRequestInputTokens ? { maxRequestInputTokens: sessionData.maxRequestInputTokens } : {}),
