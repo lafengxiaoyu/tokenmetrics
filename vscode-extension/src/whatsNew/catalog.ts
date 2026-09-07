@@ -28,6 +28,11 @@
  * Feature `id`s are persisted in globalState to remember what a user has
  * already been told. **Never reuse or renumber an id** — a recycled id silently
  * suppresses the announcement for everyone who saw the old feature.
+ *
+ * Run `node .github/skills/whats-new-catalog/whats-new-catalog.js` after editing:
+ * it catches a missing entry for the current version, a surface pointing at a
+ * view or tab that no longer exists, and features sitting below the
+ * announcement cap. See `.github/skills/whats-new-catalog/SKILL.md`.
  */
 
 /** The webview panels a feature can live in. Matches the esbuild entry point names. */
@@ -125,7 +130,15 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
 				surface: { view: 'usage', tab: 'tools', anchor: 'section-skill-suggestions' },
 			},
 			{
-				// Listed fourth on purpose: the per-release cap means this is never
+				id: 'diagnostics.ttft-tab',
+				title: 'Research → TTFT',
+				description:
+					'How long each model takes to start answering you, averaged by day, week, and month with a trendline. Read straight from Copilot Chat\'s own debug log, so there is nothing to switch on.',
+				kind: 'tab',
+				surface: { view: 'diagnostics', tab: 'ttft' },
+			},
+			{
+				// Listed last on purpose: the per-release cap means this is never
 				// announced, and it does not need to be — the notification's second
 				// button is a link to this very page.
 				id: 'whatsnew.view',
@@ -134,14 +147,6 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
 					'The last few releases in plain English, with a way in to each new view, tab, and section from here. Also where the extension sends you when it points something out.',
 				kind: 'view',
 				surface: { view: 'whatsnew' },
-			},
-			{
-				id: 'diagnostics.ttft-tab',
-				title: 'Research → TTFT',
-				description:
-					'How long each model takes to start answering you, averaged by day, week, and month with a trendline. Read straight from Copilot Chat\'s own debug log, so there is nothing to switch on.',
-				kind: 'tab',
-				surface: { view: 'diagnostics', tab: 'ttft' },
 			},
 		],
 	},

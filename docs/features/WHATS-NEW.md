@@ -73,6 +73,12 @@ fresh install is told nothing at all. The two cases are told apart by the
 
 ## Adding a release
 
+> The **`whats-new-catalog` skill** automates the mechanical half of this —
+> missing entries, stale dates, surfaces pointing at a view or tab that no longer
+> exists, and features sitting below the announcement cap. Run
+> `node .github/skills/whats-new-catalog/whats-new-catalog.js`, or see
+> [.github/skills/whats-new-catalog/SKILL.md](../../.github/skills/whats-new-catalog/SKILL.md).
+
 Prepend a `WhatsNewRelease` to `WHATS_NEW_RELEASES` (newest first) when you bump
 the version, and write it for a user rather than a reviewer — what they can now
 do, not what changed in the diff. Only list things a person can point at: a new
