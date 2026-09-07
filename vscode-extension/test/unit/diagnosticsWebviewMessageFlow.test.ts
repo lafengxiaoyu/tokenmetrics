@@ -207,3 +207,13 @@ test('a githubAuth value from an early backendStorageInfoLoaded message also sur
 	const rendered = harness.text('#tab-github');
 	assert.ok(rendered?.includes('octocat'), `expected the authenticated GitHub user to render, got: ${rendered}`);
 });
+
+test('OTel Delta tab shows a detecting message while comparison data is still loading', async () => {
+	await preloadBundle();
+	const harness = bootWebviewUnsettled(buildInitialData({ otelComparison: undefined }));
+	await harness.settle();
+
+	const rendered = harness.text('#tab-otel-delta');
+	assert.ok(rendered?.includes('OpenTelemetry Detection Running'), `expected detecting title, got: ${rendered}`);
+	assert.ok(rendered?.includes('Detecting Copilot CLI OpenTelemetry export data'), `expected detecting body, got: ${rendered}`);
+});
