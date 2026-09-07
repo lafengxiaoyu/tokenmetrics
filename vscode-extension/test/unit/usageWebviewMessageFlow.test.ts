@@ -92,6 +92,31 @@ function buildStatsWithLongTailModelEfficiency(): Record<string, unknown> {
 	return stats;
 }
 
+/**
+ * `buildStats()` with a Workspace Health customization matrix mirroring a real long-tail
+ * distribution: 5 heavily-used workspaces (110-60 sessions) followed by 5 workspaces with
+ * only 1-2 sessions each — the "clear cliff" `computeWorkspaceHealthGrouping()` should detect.
+ */
+function buildStatsWithLongTailWorkspaces(): Record<string, unknown> {
+	const stats = buildStats();
+	const majorSessionCounts = [110, 90, 80, 70, 60];
+	const tailSessionCounts = [2, 2, 1, 1, 1];
+	const workspaces = [...majorSessionCounts, ...tailSessionCounts].map((sessionCount, index) => ({
+		workspacePath: `/repos/repo-${index + 1}`,
+		workspaceName: `repo-${index + 1}`,
+		sessionCount,
+		interactionCount: sessionCount * 10,
+		typeStatuses: {},
+	}));
+	stats.customizationMatrix = {
+		customizationTypes: [],
+		workspaces,
+		totalWorkspaces: workspaces.length,
+		workspacesWithIssues: 0,
+	};
+	return stats;
+}
+
 function buildStatsWithCorrections(): Record<string, unknown> {
 	return {
 		...buildStats(),
@@ -424,6 +449,62 @@ test('remembers the "Other models" open state across a leaderboard re-render', a
 	const detailsAfterSort = harness.window.document.getElementById('model-leaderboard-other');
 	assert.ok(detailsAfterSort, 'expects the "Other models" group to still exist after sorting');
 	assert.equal(detailsAfterSort.open, true, 'the open state must survive the re-render');
+});
+
+test('collapses the long tail of low-activity workspaces into an "Other" row on Workspace Health', async () => {
+	const harness = await bootWebview(buildStatsWithLongTailWorkspaces());
+
+	const majorRows = harness.window.document.querySelectorAll('#repo-list-pane .repo-name');
+	assert.equal(majorRows.length, 5, 'only the 5 high-activity workspaces should render as individual rows');
+
+	const rendered = harness.text('#repo-list-pane');
+	assert.match(rendered ?? '', /Other \(5 repositories with low activity\)/);
+
+	const showAllButton = harness.window.document.getElementById('btn-show-other-workspaces');
+	assert.ok(showAllButton, 'expects a "Show all" toggle for the collapsed tail');
+
+	showAllButton.click();
+	await harness.settle();
+
+	const allRows = harness.window.document.querySelectorAll('#repo-list-pane .repo-name');
+	assert.equal(allRows.length, 10, '"Show all" must reveal every workspace, including the low-activity tail');
+	assert.equal(
+		harness.window.document.getElementById('btn-show-other-workspaces'), null,
+		'the "Other" row must disappear once expanded',
+	);
+	const collapseButton = harness.window.document.getElementById('btn-collapse-other-workspaces');
+	assert.ok(collapseButton, 'expects a "Show less" toggle once expanded');
+
+	collapseButton.click();
+	await harness.settle();
+
+	const collapsedAgainRows = harness.window.document.querySelectorAll('#repo-list-pane .repo-name');
+	assert.equal(collapsedAgainRows.length, 5, '"Show less" must collapse back to just the major group');
+});
+
+test('does not group workspaces on Workspace Health when there is no long tail', async () => {
+	const stats = buildStats();
+	// A gentle, non-cliff distribution with too few workspaces to bother grouping.
+	stats.customizationMatrix = {
+		customizationTypes: [],
+		workspaces: [10, 8, 6, 4].map((sessionCount, index) => ({
+			workspacePath: `/repos/repo-${index + 1}`,
+			workspaceName: `repo-${index + 1}`,
+			sessionCount,
+			interactionCount: sessionCount * 10,
+			typeStatuses: {},
+		})),
+		totalWorkspaces: 4,
+		workspacesWithIssues: 0,
+	};
+	const harness = await bootWebview(stats);
+
+	const rows = harness.window.document.querySelectorAll('#repo-list-pane .repo-name');
+	assert.equal(rows.length, 4, 'all workspaces should render individually when there is no meaningful drop-off');
+	assert.equal(
+		harness.window.document.getElementById('btn-show-other-workspaces'), null,
+		'no "Other" row should appear for a small, non-cliff workspace list',
+	);
 });
 
 test('filters corrections by type and opens the selected session turn', async () => {
