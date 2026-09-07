@@ -37,28 +37,39 @@ export async function tryReadDbWithWal(dbPath: string): Promise<Buffer | null> {
 	}
 	if (walSize === 0) { return null; }
 
+	let tmpDb: string | undefined;
+	let tmpWal: string | undefined;
+	let tmpShm: string | undefined;
+	let nativeDb: import('node:sqlite').DatabaseSync | undefined;
 	try {
 		const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite');
 		const tmpDir = path.join(os.homedir(), '.copilot', 'tmp');
 		fs.mkdirSync(tmpDir, { recursive: true, mode: 0o700 });
-		const tmpDb = path.join(tmpDir, `sqlite-wal-${path.basename(dbPath)}-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.db`);
-		const tmpWal = tmpDb + '-wal';
-		const tmpShm = tmpDb + '-shm';
+		tmpDb = path.join(tmpDir, `sqlite-wal-${path.basename(dbPath)}-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.db`);
+		tmpWal = tmpDb + '-wal';
+		tmpShm = tmpDb + '-shm';
 		const shmPath = dbPath + '-shm';
 
 		fs.copyFileSync(dbPath, tmpDb);
 		fs.copyFileSync(walPath, tmpWal);
 		if (fs.existsSync(shmPath)) { fs.copyFileSync(shmPath, tmpShm); }
 
-		const nativeDb = new DatabaseSync(tmpDb);
+		nativeDb = new DatabaseSync(tmpDb);
 		nativeDb.exec('PRAGMA wal_checkpoint(TRUNCATE);');
 		nativeDb.close();
+		nativeDb = undefined;
 
-		const buffer = fs.readFileSync(tmpDb);
-		for (const f of [tmpDb, tmpWal, tmpShm]) { try { fs.unlinkSync(f); } catch { /* ignore */ } }
-		return buffer;
+		return fs.readFileSync(tmpDb);
 	} catch {
 		return null; // node:sqlite unavailable or copy failed — fall back to direct read
+	} finally {
+		// Always clean up, even when a step above threw — otherwise a failed merge attempt
+		// leaks a temp DB (and, on Windows, a still-open handle) on every such call.
+		if (nativeDb) { try { nativeDb.close(); } catch { /* ignore */ } }
+		for (const f of [tmpDb, tmpWal, tmpShm]) {
+			if (!f) { continue; }
+			try { fs.unlinkSync(f); } catch { /* ignore — may not have been created */ }
+		}
 	}
 }
 
