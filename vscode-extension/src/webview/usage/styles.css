@@ -886,6 +886,7 @@ background: var(--bg-tertiary);
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
+	font-family: inherit;
 	font-size: 11px;
 	padding: 3px 10px;
 	border-radius: 999px;

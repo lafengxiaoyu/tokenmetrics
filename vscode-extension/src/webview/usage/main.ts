@@ -1265,7 +1265,7 @@ function buildFilterPillGroupHtml(groupLabel: string, filterType: string, items:
 	const pills = items.map(({ value, label, count }) => {
 		const isActive = activeSet.has(value);
 		const safeLabel = escapeHtml(label);
-		return `<button type="button" class="session-filter-pill${isActive ? ' active' : ''}" data-filter-type="${filterType}" data-filter-value="${escapeHtml(value)}" title="${safeLabel}: ${count} session${count === 1 ? '' : 's'}">${safeLabel} <span class="session-filter-pill-count">${count}</span></button>`;
+		return `<button type="button" class="session-filter-pill${isActive ? ' active' : ''}" data-filter-type="${filterType}" data-filter-value="${escapeHtml(value)}" aria-pressed="${isActive}" title="${safeLabel}: ${count} session${count === 1 ? '' : 's'}">${safeLabel} <span class="session-filter-pill-count">${count}</span></button>`;
 	}).join('');
 	return `<div class="session-filter-group"><span class="session-filter-group-label">${escapeHtml(groupLabel)}:</span>${pills}</div>`;
 }
@@ -1278,7 +1278,7 @@ function buildSessionFilterBarHtml(sessions: TodaySessionSummary[]): string {
 	const groups: string[] = [];
 	if (opts.hydraFusionCount > 0) {
 		const isActive = sessionFilterHydraFusionOnly;
-		groups.push(`<div class="session-filter-group"><button type="button" class="session-filter-pill session-filter-pill-hydrafusion${isActive ? ' active' : ''}" data-filter-type="hydrafusion" data-filter-value="true" title="Show only sessions that used HydraFusion">⚡ HydraFusion <span class="session-filter-pill-count">${opts.hydraFusionCount}</span></button></div>`);
+		groups.push(`<div class="session-filter-group"><button type="button" class="session-filter-pill session-filter-pill-hydrafusion${isActive ? ' active' : ''}" data-filter-type="hydrafusion" data-filter-value="true" aria-pressed="${isActive}" title="Show only sessions that used HydraFusion">⚡ HydraFusion <span class="session-filter-pill-count">${opts.hydraFusionCount}</span></button></div>`);
 	}
 	groups.push(buildFilterPillGroupHtml('Editor', 'editor', opts.editors, sessionFilterEditors));
 	groups.push(buildFilterPillGroupHtml('Vendor', 'vendor', opts.vendors, sessionFilterVendors));
