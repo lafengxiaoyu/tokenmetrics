@@ -1982,6 +1982,17 @@ class CopilotTokenTracker implements vscode.Disposable {
 		this._lastRepoPrStats = stamped;
 		const { delivered, wasReady } = await this.analysisMessageReplay.publish('repoPrStats', { command: 'repoPrStatsLoaded', data: stamped });
 		this.log(`🔎 Repository PR stats posted for ${stamped.repos.length} repo(s) (delivered=${delivered}, webviewReady=${wasReady}, ${this._describeAnalysisPanel()})`);
+
+		// `fetchedAt` is only set on real (cache-read or freshly-fetched) snapshots — the instant
+		// placeholder served on cold open uses ''. If the Efficiency panel is already open and its
+		// Value tab was rendered before this real data landed (e.g. the user opened Repository PRs
+		// after Efficiency), its "no data" hint would otherwise persist until an explicit Refresh
+		// click, since showEfficiency() deliberately doesn't recompute on reveal. Push the update.
+		if (stamped.fetchedAt && this.efficiencyPanel) {
+			void this.dispatch('refresh:efficiency', () => this.refreshEfficiencyPanel()).catch((err) => {
+				this.warn(`Failed to refresh Efficiency view after repository PR stats update: ${err}`);
+			});
+		}
 	}
 
 	/**
