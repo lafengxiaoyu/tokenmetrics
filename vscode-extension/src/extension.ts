@@ -331,6 +331,7 @@ import { toLocalDayKey } from '../../src/utils/dayKeys';
 import { buildRecentSessionBuckets as bucketRecentSessions } from '../../src/recentSessions';
 import { determineOnboardingAction } from './onboarding';
 import { mergeNotifiedEditors, mergeSeenEditors } from './editorDiscovery';
+import { TtftScanResultCache } from './ttftAnalysisCache';
 
 type LocalViewRegressionProbeResult = {
   pass: boolean;
@@ -494,6 +495,8 @@ class CopilotTokenTracker implements vscode.Disposable {
 	// Full, unfiltered session file paths from the last diagnostics load (no 14-day/500-file cap) —
 	// the TTFT scan-range picker filters this list itself instead of relying on diagnosticsCachedFiles.
 	private diagnosticsAllSessionFiles: string[] = [];
+	// Per scan-range TTFT result cache. Granularity changes reuse the cached sample set instantly.
+	private readonly diagnosticsTtftCache = new TtftScanResultCache();
 	// Cache of the last diagnostic report text for copy/issue operations
 	private lastDiagnosticReport: string = '';
 	// Incremented on each worktree scan start/cancel; in-flight scans check this to stop early
@@ -1337,6 +1340,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 			this.diagnosticsHasLoadedFiles = false;
 			this.diagnosticsCachedFiles = [];
 			this.diagnosticsAllSessionFiles = [];
+			this.diagnosticsTtftCache.clear();
 			// Clear cached computed stats so details panel doesn't show stale data
 			this.lastDetailedStats = undefined;
 			this.lastDailyStats = undefined;
@@ -6974,40 +6978,45 @@ private computeFallbackDailyRollup(
 	 * debug log (non-VS-Code-Chat editors, or Chat sessions predating this file) resolve to
 	 * null immediately with no I/O — see resolveDebugLogCandidatePaths in workspaceHelpers.ts.
 	 *
-	 * Scans `diagnosticsAllSessionFiles` — the full, unfiltered discovery list — rather than
+	 * The scan result is cached per scan-range selector so granularity-only changes can reuse the
+	 * same sample set instantly. When the range changes, the first miss for that range scans
+	 * `diagnosticsAllSessionFiles` — the full, unfiltered discovery list — rather than
 	 * `diagnosticsCachedFiles`, which is capped to the last 14 days / 500 files for the rest of
 	 * the Diagnostics screen. That cap silently hid real `attrs.ttft` data that exists on disk
-	 * but is older than 14 days; `scanRangeMs` (null = all time) lets the tab's own picker widen
-	 * the search instead. Debug-log-shaped candidates are found cheaply first (no I/O — a path
-	 * check), then only those are stat'd for the range filter.
+	 * but is older than 14 days; the tab's own picker widens the search instead. Debug-log-shaped
+	 * candidates are found cheaply first (no I/O — a path check), then only those are stat'd for
+	 * the requested range on a cache miss.
 	 */
-	private async collectTtftSamples(scanRangeMs: number | null): Promise<{ samples: TtftSample[]; fileCount: number }> {
-		const candidates = this.diagnosticsAllSessionFiles.filter(f => _resolveDebugLogCandidatePaths(f) !== undefined);
-		const CONCURRENCY = 20;
-		let inRange = candidates;
-		if (scanRangeMs !== null) {
-			const cutoff = Date.now() - scanRangeMs;
-			const withStats: (string | null)[] = [];
-			for (let i = 0; i < candidates.length; i += CONCURRENCY) {
-				const batch = candidates.slice(i, i + CONCURRENCY);
-				const results = await Promise.all(batch.map(async (file) => {
-					try {
-						const stat = await fs.promises.stat(file);
-						return stat.mtimeMs >= cutoff ? file : null;
-					} catch { return null; }
-				}));
-				withStats.push(...results);
+	private async collectTtftSamples(scanRange: TtftScanRange): Promise<{ samples: TtftSample[]; fileCount: number }> {
+		return this.diagnosticsTtftCache.getOrLoad(scanRange, async () => {
+			const scanRangeMs = ttftScanRangeToMs(scanRange);
+			const candidates = this.diagnosticsAllSessionFiles.filter(f => _resolveDebugLogCandidatePaths(f) !== undefined);
+			const CONCURRENCY = 20;
+			let inRange = candidates;
+			if (scanRangeMs !== null) {
+				const cutoff = Date.now() - scanRangeMs;
+				const withStats: (string | null)[] = [];
+				for (let i = 0; i < candidates.length; i += CONCURRENCY) {
+					const batch = candidates.slice(i, i + CONCURRENCY);
+					const results = await Promise.all(batch.map(async (file) => {
+						try {
+							const stat = await fs.promises.stat(file);
+							return stat.mtimeMs >= cutoff ? file : null;
+						} catch { return null; }
+					}));
+					withStats.push(...results);
+				}
+				inRange = withStats.filter((f): f is string => f !== null);
 			}
-			inRange = withStats.filter((f): f is string => f !== null);
-		}
 
-		const all: TtftSample[] = [];
-		for (let i = 0; i < inRange.length; i += CONCURRENCY) {
-			const batch = inRange.slice(i, i + CONCURRENCY);
-			const results = await Promise.all(batch.map(f => this.readTtftSamplesForSessionFile(f)));
-			for (const r of results) { if (r) { all.push(...r); } }
-		}
-		return { samples: all, fileCount: inRange.length };
+			const all: TtftSample[] = [];
+			for (let i = 0; i < inRange.length; i += CONCURRENCY) {
+				const batch = inRange.slice(i, i + CONCURRENCY);
+				const results = await Promise.all(batch.map(f => this.readTtftSamplesForSessionFile(f)));
+				for (const r of results) { if (r) { all.push(...r); } }
+			}
+			return { samples: all, fileCount: inRange.length };
+		});
 	}
 
 	private extractPerRequestUsageFromRawLines(lines: string[]): Map<number, { promptTokens: number; outputTokens: number }> {
@@ -10207,7 +10216,9 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
    */
   private async diagHandleAnalyzeTtft(message: any): Promise<void> {
     const granularity: TtftGranularity = message?.granularity === 'week' || message?.granularity === 'month' ? message.granularity : 'day';
-    const scanRangeMs = ttftScanRangeToMs(message?.scanRange);
+    const scanRange: TtftScanRange = message?.scanRange === '30d' || message?.scanRange === '90d' || message?.scanRange === '180d' || message?.scanRange === '365d' || message?.scanRange === 'all'
+      ? message.scanRange
+      : '14d';
     if (!this.diagnosticsPanel || !this.isPanelOpen(this.diagnosticsPanel)) { return; }
 
     if (!this.diagnosticsHasLoadedFiles) {
@@ -10215,7 +10226,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
       return;
     }
 
-    const { samples, fileCount } = await this.collectTtftSamples(scanRangeMs);
+    const { samples, fileCount } = await this.collectTtftSamples(scanRange);
     const buckets = _buildTtftBuckets(samples, granularity);
     const series = _buildTtftModelSeries(buckets);
 
@@ -11087,6 +11098,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
 
       const sessionFiles = await this.sessionDiscovery.getCopilotSessionFiles();
       this.diagnosticsAllSessionFiles = sessionFiles;
+      this.diagnosticsTtftCache.clear();
       const sessionFileData = await this.getSessionFilePreviewData(sessionFiles);
       const sessionFolders = this.buildSessionFolderData(sessionFiles);
       const candidatePaths = this.sessionDiscovery.getDiagnosticCandidatePaths();
