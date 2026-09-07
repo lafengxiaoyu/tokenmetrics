@@ -114,6 +114,8 @@ export function getEditorSourceFromPath(filePath: string): string {
 	// Cline task files live under <variant>/User/globalStorage/saoudrizwan.claude-dev/
 	// — must be checked before the generic /cursor/ and VS Code fallthrough below.
 	if (normalized.includes('/saoudrizwan.claude-dev/tasks/')) { return 'Cline'; }
+	// Kilo Code (OpenCode fork): virtual DB session paths <...>/.local/share/kilo/kilo.db#ses_<id>.
+	if (normalized.includes('/kilo/kilo.db#')) { return 'Kilo Code'; }
 	if (normalized.includes('/opencode/')) { return 'OpenCode'; }
 	// OpenAI Codex CLI (~/.codex): must be checked before the generic 'code'-based
 	// fallbacks below ('codex' contains 'code' and would misclassify as VS Code).
