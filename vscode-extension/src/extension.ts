@@ -10852,10 +10852,10 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
     const sessionEvidence = await this.findSessionRepoEvidenceForWorktree(worktreePath);
     const mainRepoRoot = await this.resolveMainRepoRoot(worktreePath);
     const validatedMainRepoRoot = mainRepoRoot ?? sessionEvidence?.repoRoot;
-    if (!validatedMainRepoRoot || _normalizePathForDedup(path.resolve(validatedMainRepoRoot)) === _normalizePathForDedup(path.resolve(worktreePath))) {
+    if (!validatedMainRepoRoot || _normalizePathForDedup(validatedMainRepoRoot) === _normalizePathForDedup(_normalizeToRepoRoot(worktreePath))) {
       return { status: "error", reason: `Could not safely locate the main repository for "${worktreePath}".` };
     }
-    if (mainRepoRoot && sessionEvidence && _normalizePathForDedup(path.resolve(mainRepoRoot)) !== _normalizePathForDedup(path.resolve(sessionEvidence.repoRoot))) {
+    if (mainRepoRoot && sessionEvidence && _normalizePathForDedup(mainRepoRoot) !== _normalizePathForDedup(sessionEvidence.repoRoot)) {
       return {
         status: "error",
         reason: `Repo validation failed for "${worktreePath}": git resolved "${mainRepoRoot}" but session "${sessionEvidence.sessionWorkspacePath}" points to "${sessionEvidence.repoRoot}".`,

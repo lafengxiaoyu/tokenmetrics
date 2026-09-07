@@ -8,9 +8,7 @@
  * the parts that are pure functions of their inputs, so they can be unit-tested directly,
  * following the same pattern as `insightsEngine.ts`.
  */
-import * as path from 'path';
-
-import { normalizeToRepoRoot } from '../../src/workspaceHelpers';
+import { normalizePathForDedup, normalizeToRepoRoot } from '../../src/workspaceHelpers';
 
 /** One worktree's findings, as persisted after the background scan completes. */
 export interface WorktreeBackgroundScanEntry {
@@ -162,18 +160,14 @@ export function validateWorktreeRepoRootFromSessionPaths(
 	worktreePath: string,
 	sessionWorkspacePaths: (string | undefined)[],
 ): WorktreeSessionRepoEvidence | undefined {
-	const worktreeRepoRoot = path.resolve(normalizeToRepoRoot(worktreePath));
+	const worktreeRepoRoot = normalizePathForDedup(normalizeToRepoRoot(worktreePath));
 	for (const sessionWorkspacePath of sessionWorkspacePaths) {
 		const value = typeof sessionWorkspacePath === "string" ? sessionWorkspacePath.trim() : "";
 		if (!value) { continue; }
-		const sessionRepoRoot = path.resolve(normalizeToRepoRoot(value));
-		if (_normalizePathForComparison(sessionRepoRoot) === _normalizePathForComparison(worktreeRepoRoot)) {
-			return { sessionWorkspacePath: value, repoRoot: sessionRepoRoot };
+		const sessionRepoRoot = normalizePathForDedup(normalizeToRepoRoot(value));
+		if (sessionRepoRoot === worktreeRepoRoot) {
+			return { sessionWorkspacePath: value, repoRoot: normalizeToRepoRoot(value) };
 		}
 	}
 	return undefined;
-}
-
-function _normalizePathForComparison(value: string): string {
-	return path.resolve(value).replace(/\\/g, "/").toLowerCase();
 }
