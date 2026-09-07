@@ -43,6 +43,11 @@ type KiloModelUsageWithInteractions = {
 	[modelName: ModelId]: ModelUsage[ModelId] & { interactions?: number };
 };
 
+function toFiniteNumber(value: unknown): number {
+	const numberValue = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : 0;
+	return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
 export class KiloDataAccess {
 	private _sqlJsModule: SqlJsStatic | null = null;
 	private _sqlJsInitPromise: Promise<SqlJsStatic> | null = null;
@@ -370,10 +375,9 @@ export class KiloDataAccess {
 		let sessionTotal = 0;
 		for (const msg of messages) {
 			if (msg.role === 'assistant' && msg.tokens) {
-				if (typeof msg.tokens.total === 'number') {
-					sessionTotal = msg.tokens.total; // cumulative — last one wins
-				}
-				thinkingTokens += msg.tokens.reasoning || 0;
+				const total = toFiniteNumber(msg.tokens.total);
+				if (total > 0) { sessionTotal = total; } // cumulative — last one wins
+				thinkingTokens += toFiniteNumber(msg.tokens.reasoning);
 			}
 		}
 
@@ -415,7 +419,7 @@ export class KiloDataAccess {
 	private computeTurnCumTotal(turnAssistantMsgs: any[], prevTotal: number): number {
 		let cumTotal = prevTotal;
 		for (const am of turnAssistantMsgs) {
-			if (typeof am.tokens?.total === 'number') { cumTotal = Math.max(cumTotal, am.tokens.total); }
+			cumTotal = Math.max(cumTotal, toFiniteNumber(am.tokens?.total));
 		}
 		return cumTotal;
 	}
@@ -436,11 +440,12 @@ export class KiloDataAccess {
 			// Untrusted `model` string from parsed session JSON — see protoGuard.ts.
 			if (isUnsafeObjectKey(model)) { prevTotal = turnCumTotal; continue; }
 			if (!modelUsage[model]) { modelUsage[model] = { inputTokens: 0, outputTokens: 0, sessions: 0 }; }
-			const turnOutput = turnAssistantMsgs.reduce((sum, m) => sum + (m.tokens?.output || 0) + (m.tokens?.reasoning || 0), 0);
+			const turnOutput = turnAssistantMsgs.reduce((sum, m) =>
+				sum + toFiniteNumber(m.tokens?.output) + toFiniteNumber(m.tokens?.reasoning), 0);
 			modelUsage[model].inputTokens += Math.max(0, turnTokens - turnOutput);
 			modelUsage[model].outputTokens += turnOutput;
-			const turnCachedRead = turnAssistantMsgs.reduce((sum, m) => sum + (m.tokens?.cache?.read || 0), 0);
-			const turnCacheCreation = turnAssistantMsgs.reduce((sum, m) => sum + (m.tokens?.cache?.write || 0), 0);
+			const turnCachedRead = turnAssistantMsgs.reduce((sum, m) => sum + toFiniteNumber(m.tokens?.cache?.read), 0);
+			const turnCacheCreation = turnAssistantMsgs.reduce((sum, m) => sum + toFiniteNumber(m.tokens?.cache?.write), 0);
 			if (turnCachedRead > 0) { modelUsage[model].cachedReadTokens = (modelUsage[model].cachedReadTokens ?? 0) + turnCachedRead; }
 			if (turnCacheCreation > 0) { modelUsage[model].cacheCreationTokens = (modelUsage[model].cacheCreationTokens ?? 0) + turnCacheCreation; }
 			prevTotal = turnCumTotal;
@@ -460,7 +465,7 @@ export class KiloDataAccess {
 		// Messages store their timestamp in the nested `time.created` field.
 		let timestamp = Date.now();
 		const created = messages[0]?.time?.created;
-		if (typeof created === 'number') {
+		if (typeof created === 'number' && Number.isFinite(created)) {
 			timestamp = created;
 		} else if (typeof created === 'string') {
 			const parsed = Date.parse(created);
