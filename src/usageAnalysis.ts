@@ -1364,12 +1364,13 @@ export function mergeUsageAnalysis(period: UsageAnalysisPeriod, analysis: Sessio
 function _muaMergeCorrections(period: UsageAnalysisPeriod, analysis: SessionUsageAnalysis): void {
 	if (!analysis.correctionMoments || analysis.correctionMoments.length === 0) { return; }
 	if (!period.corrections) {
-		period.corrections = { userCorrections: 0, editRetries: 0, editSelfCorrections: 0, toolErrors: 0, toolErrorsRetried: 0, agentSelfCorrections: 0, sessionsWithMoments: 0, sessionsWithUserCorrections: 0 };
+		period.corrections = { userCorrections: 0, editRetries: 0, editSelfCorrections: 0, toolErrors: 0, toolErrorsRetried: 0, agentSelfCorrections: 0, escalatedUserCorrections: 0, sessionsWithMoments: 0, sessionsWithUserCorrections: 0, sessionsWithEscalations: 0 };
 	}
 	const counts = analysis.correctionCounts ?? summarizeCorrectionMoments(analysis.correctionMoments);
 	mergeCorrectionCounts(period.corrections, counts);
 	period.corrections.sessionsWithMoments++;
 	if (counts.userCorrections > 0) { period.corrections.sessionsWithUserCorrections!++; }
+	if (counts.escalatedUserCorrections > 0) { period.corrections.sessionsWithEscalations!++; }
 }
 
 /** @internal lookup table for analyzeContextReferences */

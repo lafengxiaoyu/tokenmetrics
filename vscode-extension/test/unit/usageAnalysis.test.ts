@@ -184,13 +184,14 @@ test('mergeUsageAnalysis: uses uncapped correction counts and tracks user-correc
     }];
     analysis.correctionCounts = {
         userCorrections: 2, editRetries: 60, editSelfCorrections: 4,
-        toolErrors: 70, toolErrorsRetried: 50, agentSelfCorrections: 1,
+        toolErrors: 70, toolErrorsRetried: 50, agentSelfCorrections: 1, escalatedUserCorrections: 1,
     };
     mergeUsageAnalysis(period, analysis);
     assert.equal(period.corrections?.editRetries, 60);
     assert.equal(period.corrections?.toolErrors, 70);
     assert.equal(period.corrections?.sessionsWithMoments, 1);
     assert.equal(period.corrections?.sessionsWithUserCorrections, 1);
+    assert.equal(period.corrections?.sessionsWithEscalations, 1);
 });
 
 test('mergeModelEfficiencyTokens: folds per-session model usage tokens and cost into the period', () => {

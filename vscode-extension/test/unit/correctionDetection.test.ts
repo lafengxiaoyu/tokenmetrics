@@ -76,7 +76,7 @@ test('user-correction: leaves ordinary requests alone', () => {
 // agent-self-correction
 // ---------------------------------------------------------------------------
 
-test('agent-self-correction: detects admission phrasings', () => {
+test('agent-self-correction: detects admission phrasings when corroborated by a tool error', () => {
     const cases = [
         'Let me fix that for you.',
         'My mistake — the path was wrong.',
@@ -87,15 +87,130 @@ test('agent-self-correction: detects admission phrasings', () => {
         'I incorrectly assumed the file existed.',
     ];
     for (const response of cases) {
-        const moments = detectCorrectionMoments([{ assistantResponse: response }]);
-        assert.equal(moments.length, 1, `"${response}" should produce one moment`);
-        assert.equal(moments[0].type, 'agent-self-correction');
+        const moments = detectCorrectionMoments([{
+            assistantResponse: response,
+            toolCalls: [{ toolName: 'run', isError: true }],
+        }]);
+        const selfCorrections = moments.filter(m => m.type === 'agent-self-correction');
+        assert.equal(selfCorrections.length, 1, `"${response}" should produce one moment`);
+        assert.equal(selfCorrections[0].corroboratedBy, 'tool-error');
     }
 });
 
 test('agent-self-correction: leaves ordinary responses alone', () => {
     const moments = detectCorrectionMoments([{ assistantResponse: 'Done — I added the login page and tests pass.' }]);
     assert.equal(moments.length, 0);
+});
+
+test('agent-self-correction: an uncorroborated phrase (routine narration) produces no moment', () => {
+    // "Let me fix" etc. are extremely common even when nothing went wrong — without a
+    // nearby tool-error, edit-retry, or user-correction, it's just task narration.
+    const moments = detectCorrectionMoments([{ assistantResponse: 'Let me fix the imports while I am in this file.' }]);
+    assert.equal(moments.length, 0);
+});
+
+test('agent-self-correction: corroborated by an edit-retry in the same turn', () => {
+    const moments = detectCorrectionMoments([{
+        assistantResponse: 'Let me fix that.',
+        toolCalls: [editCall('/a.ts'), editCall('/a.ts')],
+    }]);
+    const selfCorrection = moments.find(m => m.type === 'agent-self-correction');
+    assert.ok(selfCorrection, 'should be corroborated by the edit-retry');
+    assert.equal(selfCorrection!.corroboratedBy, 'edit-retry');
+});
+
+test('agent-self-correction: corroborated by a user-correction in the previous turn', () => {
+    const turns: CorrectionTurn[] = [
+        { userMessage: 'no, that is wrong' },
+        { assistantResponse: 'My mistake, let me fix it.' },
+    ];
+    const moments = detectCorrectionMoments(turns);
+    const selfCorrection = moments.find(m => m.type === 'agent-self-correction');
+    assert.ok(selfCorrection, 'should be corroborated by the previous turn\'s user-correction');
+    assert.equal(selfCorrection!.corroboratedBy, 'user-correction');
+});
+
+test('agent-self-correction: a user-correction two turns earlier does not corroborate', () => {
+    const turns: CorrectionTurn[] = [
+        { userMessage: 'no, that is wrong' },
+        { userMessage: 'add a login page' },
+        { assistantResponse: 'My mistake, let me fix it.' },
+    ];
+    const moments = detectCorrectionMoments(turns);
+    assert.equal(moments.some(m => m.type === 'agent-self-correction'), false);
+});
+
+// ---------------------------------------------------------------------------
+// auto-injected notifications (not authored by the human)
+// ---------------------------------------------------------------------------
+
+test('user-correction: ignores auto-injected terminal notifications', () => {
+    // VS Code auto-sends a "[Terminal ... notification: ...]" message into chat when a
+    // background command finishes — this is not something the user typed, and its
+    // boilerplate ("...or kill_terminal to stop it.") would otherwise read as a correction.
+    const notification = '[Terminal 0f67ade5 notification: command completed with exit code 1. ' +
+        'Use send_to_terminal to send another command or kill_terminal to stop it.]\nTerminal output:\n...';
+    const moments = detectCorrectionMoments([{ userMessage: notification }]);
+    assert.equal(moments.length, 0);
+});
+
+test('user-correction: a real message starting with "no" alongside pasted terminal output still fires', () => {
+    const moments = detectCorrectionMoments([{ userMessage: 'no, restart the dev server\n[some pasted log output]' }]);
+    assert.equal(moments.length, 1);
+    assert.equal(moments[0].type, 'user-correction');
+});
+
+// ---------------------------------------------------------------------------
+// intensity
+// ---------------------------------------------------------------------------
+
+test('user-correction: flags intensity cues (shouting, repeated punctuation, intensifiers)', () => {
+    const cases = [
+        'STOP, that is not what I asked for',
+        "that's wrong again??",
+        'stop doing that, seriously',
+    ];
+    for (const message of cases) {
+        const [moment] = detectCorrectionMoments([{ userMessage: message }]);
+        assert.equal(moment.intensity, 'strong', `"${message}" should be flagged as strong intensity`);
+    }
+});
+
+test('user-correction: a plain correction has no intensity flag', () => {
+    const [moment] = detectCorrectionMoments([{ userMessage: 'no, use the other endpoint please' }]);
+    assert.equal(moment.intensity, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// escalation
+// ---------------------------------------------------------------------------
+
+test('user-correction: clustering corrections are marked escalated', () => {
+    const turns: CorrectionTurn[] = [
+        { userMessage: 'no, wrong file' },
+        { userMessage: 'add a test' },
+        { userMessage: 'no, that is still not right' },
+        { userMessage: 'stop changing that' },
+    ];
+    const result = detectCorrectionAnalysis(turns);
+    const userCorrections = result.moments.filter(m => m.type === 'user-correction').sort((a, b) => a.turnNumber - b.turnNumber);
+    assert.equal(userCorrections.length, 3);
+    assert.equal(userCorrections[0].escalated, undefined, 'the first correction has nothing to escalate from');
+    assert.equal(userCorrections[1].escalated, true);
+    assert.equal(userCorrections[2].escalated, true);
+    assert.equal(result.counts.escalatedUserCorrections, 2);
+});
+
+test('user-correction: corrections far apart are not escalated', () => {
+    const turns: CorrectionTurn[] = [
+        { userMessage: 'no, wrong file' },
+        ...Array.from({ length: 10 }, () => ({ userMessage: 'add another feature' })),
+        { userMessage: 'no, that is still not right' },
+    ];
+    const result = detectCorrectionAnalysis(turns);
+    const userCorrections = result.moments.filter(m => m.type === 'user-correction');
+    assert.equal(userCorrections.every(m => !m.escalated), true);
+    assert.equal(result.counts.escalatedUserCorrections, 0);
 });
 
 // ---------------------------------------------------------------------------
@@ -272,9 +387,9 @@ test('mergeCorrectionCounts: sums all fields and tolerates undefined', () => {
     const target = createEmptyCorrectionCounts();
     mergeCorrectionCounts(target, undefined);
     assert.deepEqual(target, createEmptyCorrectionCounts());
-    mergeCorrectionCounts(target, { userCorrections: 2, editRetries: 1, editSelfCorrections: 0, toolErrors: 3, toolErrorsRetried: 2, agentSelfCorrections: 1 });
-    mergeCorrectionCounts(target, { userCorrections: 1, editRetries: 0, editSelfCorrections: 4, toolErrors: 0, toolErrorsRetried: 0, agentSelfCorrections: 0 });
-    assert.deepEqual(target, { userCorrections: 3, editRetries: 1, editSelfCorrections: 4, toolErrors: 3, toolErrorsRetried: 2, agentSelfCorrections: 1 });
+    mergeCorrectionCounts(target, { userCorrections: 2, editRetries: 1, editSelfCorrections: 0, toolErrors: 3, toolErrorsRetried: 2, agentSelfCorrections: 1, escalatedUserCorrections: 1 });
+    mergeCorrectionCounts(target, { userCorrections: 1, editRetries: 0, editSelfCorrections: 4, toolErrors: 0, toolErrorsRetried: 0, agentSelfCorrections: 0, escalatedUserCorrections: 0 });
+    assert.deepEqual(target, { userCorrections: 3, editRetries: 1, editSelfCorrections: 4, toolErrors: 3, toolErrorsRetried: 2, agentSelfCorrections: 1, escalatedUserCorrections: 1 });
 });
 
 test('pattern catalogs stay non-empty and well-formed', () => {

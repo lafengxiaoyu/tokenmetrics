@@ -20,11 +20,25 @@
  *                             (Copilot CLI JSONL). `retried` is set when the
  *                             same tool is called again later in the session.
  * - `agent-self-correction` — heuristic patterns on the assistant response text
- *                             ("my mistake", "let me fix", "you're right", ...).
+ *                             ("my mistake", "let me fix", "you're right", ...),
+ *                             only counted when corroborated by a tool-error,
+ *                             edit-retry, or user-correction nearby (see
+ *                             `corroboratedBy`) — the bare phrase alone is far
+ *                             too common in ordinary task narration.
  *
  * The pattern-based detectors are heuristics and intentionally cheap — they
  * produce candidates, not verdicts. The edit-based detectors share their
  * definitions with modelEfficiency.ts so counts stay comparable.
+ *
+ * No editor's session logs carry an actual sentiment/feedback score, so two
+ * cheap proxies are layered on top of `user-correction` instead: `intensity`
+ * (shouting/punctuation/intensifier cues on the message itself) and
+ * `escalated` (this correction lands within a few turns of the previous one,
+ * i.e. corrections are clustering rather than one-off).
+ *
+ * Auto-injected editor/tool notifications (e.g. VS Code's background-terminal
+ * "done" ping, which lands in the same field as a typed user message) are
+ * excluded from `user-correction` matching — see `isHumanAuthored`.
  *
  * This module is intentionally pure (no VS Code API, no filesystem access) so
  * it can be unit-tested with mocked data and reused by the CLI and the webview.
@@ -86,6 +100,36 @@ export const AGENT_SELF_CORRECTION_PATTERNS: CorrectionPattern[] = [
 	{ re: /\bcorrecting (my|that|the above)/i, label: "'correcting ...'" },
 ];
 
+/**
+ * Text cues that make a `user-correction` message read as more heated than a plain
+ * correction: shouting (an all-caps word), repeated `!`/`?`, or an explicit intensifier
+ * ("again", "seriously", "for the last time"). Purely a proxy — no sentiment data is
+ * available from any supported editor's session logs (see docs/features/CORRECTIONS.md).
+ */
+const INTENSITY_PATTERNS: RegExp[] = [
+	/\b[A-Z]{3,}\b/, // a shouted word, e.g. "STOP" or "WHY"
+	/[!?]{2,}/, // "??" / "!!" / "?!"
+	/\b(again|seriously|for the (last|third|second) time)\b/i,
+];
+
+function hasIntensityCue(text: string): boolean {
+	return INTENSITY_PATTERNS.some(re => re.test(text));
+}
+
+/**
+ * Matches editor/tool-injected notifications that land in the `userMessage` field
+ * without the user having typed anything — e.g. VS Code's background-terminal
+ * "notification" message auto-sent into chat when a long-running command finishes.
+ * Scanning these for correction phrases produces false positives (the boilerplate
+ * "...or kill_terminal to stop it." reads as a `stop ...` correction) because the text
+ * isn't authored by the human at all.
+ */
+const AUTO_NOTIFICATION_RE = /^\s*\[Terminal\b[^\]]*\bnotification\b/i;
+
+function isHumanAuthored(text: string | undefined): text is string {
+	return !!text && !AUTO_NOTIFICATION_RE.test(text);
+}
+
 // ---------------------------------------------------------------------------
 // Detection
 // ---------------------------------------------------------------------------
@@ -122,6 +166,8 @@ export interface CorrectionDetectionResult {
 
 interface CorrectionDetectionState extends CorrectionDetectionResult {
 	openToolErrors: Map<string, CorrectionMoment>;
+	/** Turn number of the most recent `user-correction` moment, for escalation clustering. */
+	lastUserCorrectionTurn: number | null;
 }
 
 function retainMoment(state: CorrectionDetectionState, moment: CorrectionMoment): void {
@@ -139,15 +185,17 @@ function retainMoment(state: CorrectionDetectionState, moment: CorrectionMoment)
 	}
 }
 
+/** Returns true when at least one edit-retry / edit-self-correction moment was recorded. */
 function detectEditMoments(
 	toolCalls: NonNullable<CorrectionTurn['toolCalls']>,
 	turnNumber: number,
 	timestamp: string | null,
 	state: CorrectionDetectionState
-): void {
+): boolean {
 	const editedFiles = new Set<string>();
 	let lastEditFile: string | null = null;
 	let unknownPathCounter = 0;
+	let found = false;
 
 	for (const call of toolCalls) {
 		if (!isEditToolName(call.toolName)) {
@@ -166,11 +214,20 @@ function detectEditMoments(
 				snippet: file ? `Re-edited ${file}` : 'Re-edited a file (path unknown)',
 				...(file ? { file } : {}),
 			});
+			found = true;
 		}
 		editedFiles.add(key);
 		lastEditFile = key;
 	}
+	return found;
 }
+
+/**
+ * Turns within this many turn-positions of an earlier `user-correction` count as the
+ * same "cluster" for escalation purposes — corrections this close together read as
+ * the user repeatedly pushing back rather than two unrelated one-off notes.
+ */
+const ESCALATION_WINDOW_TURNS = 4;
 
 /**
  * Detect all correction moments in a session's turns.
@@ -181,6 +238,7 @@ export function detectCorrectionAnalysis(turns: CorrectionTurn[]): CorrectionDet
 		moments: [],
 		counts: createEmptyCorrectionCounts(),
 		openToolErrors: new Map(),
+		lastUserCorrectionTurn: null,
 	};
 
 	for (let i = 0; i < turns.length; i++) {
@@ -188,25 +246,27 @@ export function detectCorrectionAnalysis(turns: CorrectionTurn[]): CorrectionDet
 		const turnNumber = i + 1;
 		const timestamp = turn.timestamp ?? null;
 
-		const userMatch = matchPattern(turn.userMessage, USER_CORRECTION_PATTERNS);
+		// Auto-injected editor/tool notifications (e.g. a background-terminal "done" ping)
+		// aren't authored by the user — skip them so their boilerplate text can't match a
+		// correction phrase.
+		const userText = isHumanAuthored(turn.userMessage) ? turn.userMessage : undefined;
+		const prevTurnHadUserCorrection = state.lastUserCorrectionTurn === turnNumber - 1;
+
+		const userMatch = matchPattern(userText, USER_CORRECTION_PATTERNS);
 		if (userMatch) {
+			const escalated = state.lastUserCorrectionTurn !== null && turnNumber - state.lastUserCorrectionTurn <= ESCALATION_WINDOW_TURNS;
 			retainMoment(state, {
 				type: 'user-correction', turnNumber, timestamp,
-				snippet: makeSnippet(turn.userMessage!, userMatch.index),
+				snippet: makeSnippet(userText!, userMatch.index),
 				matchedPattern: userMatch.label,
+				...(hasIntensityCue(userText!) ? { intensity: 'strong' } : {}),
+				...(escalated ? { escalated: true } : {}),
 			});
-		}
-
-		const agentMatch = matchPattern(turn.assistantResponse, AGENT_SELF_CORRECTION_PATTERNS);
-		if (agentMatch) {
-			retainMoment(state, {
-				type: 'agent-self-correction', turnNumber, timestamp,
-				snippet: makeSnippet(turn.assistantResponse!, agentMatch.index),
-				matchedPattern: agentMatch.label,
-			});
+			state.lastUserCorrectionTurn = turnNumber;
 		}
 
 		const toolCalls = turn.toolCalls ?? [];
+		let turnHasToolError = false;
 		for (const call of toolCalls) {
 			// A later call of the same tool marks an earlier failure as recovered.
 			const openError = state.openToolErrors.get(call.toolName);
@@ -224,10 +284,34 @@ export function detectCorrectionAnalysis(turns: CorrectionTurn[]): CorrectionDet
 				};
 				retainMoment(state, moment);
 				state.openToolErrors.set(call.toolName, moment);
+				turnHasToolError = true;
 			}
 		}
 
-		detectEditMoments(toolCalls, turnNumber, timestamp, state);
+		const turnHasEditRetry = detectEditMoments(toolCalls, turnNumber, timestamp, state);
+
+		// agent-self-correction phrasing ("let me fix", "you're right", ...) is extremely
+		// common narration even when nothing actually went wrong, so it's only counted as a
+		// correction moment when corroborated by an independent signal: a tool failure or
+		// edit-retry in this turn, or a user-correction just before/in this turn.
+		const agentMatch = matchPattern(turn.assistantResponse, AGENT_SELF_CORRECTION_PATTERNS);
+		if (agentMatch) {
+			const corroboratedBy: CorrectionMoment['corroboratedBy'] = turnHasToolError
+				? 'tool-error'
+				: turnHasEditRetry
+					? 'edit-retry'
+					: (prevTurnHadUserCorrection || userMatch !== null)
+						? 'user-correction'
+						: undefined;
+			if (corroboratedBy) {
+				retainMoment(state, {
+					type: 'agent-self-correction', turnNumber, timestamp,
+					snippet: makeSnippet(turn.assistantResponse!, agentMatch.index),
+					matchedPattern: agentMatch.label,
+					corroboratedBy,
+				});
+			}
+		}
 	}
 
 	state.moments.sort((a, b) => a.turnNumber - b.turnNumber);
@@ -243,13 +327,16 @@ export function detectCorrectionMoments(turns: CorrectionTurn[]): CorrectionMome
 // ---------------------------------------------------------------------------
 
 export function createEmptyCorrectionCounts(): CorrectionCounts {
-	return { userCorrections: 0, editRetries: 0, editSelfCorrections: 0, toolErrors: 0, toolErrorsRetried: 0, agentSelfCorrections: 0 };
+	return { userCorrections: 0, editRetries: 0, editSelfCorrections: 0, toolErrors: 0, toolErrorsRetried: 0, agentSelfCorrections: 0, escalatedUserCorrections: 0 };
 }
 
 /** Fold one moment into the counter bucket. */
 export function addMomentToCounts(counts: CorrectionCounts, moment: CorrectionMoment): void {
 	switch (moment.type) {
-		case 'user-correction': counts.userCorrections++; break;
+		case 'user-correction':
+			counts.userCorrections++;
+			if (moment.escalated) { counts.escalatedUserCorrections++; }
+			break;
 		case 'edit-retry': counts.editRetries++; break;
 		case 'edit-self-correction': counts.editSelfCorrections++; break;
 		case 'tool-error':
@@ -276,4 +363,5 @@ export function mergeCorrectionCounts(target: CorrectionCounts, source: Correcti
 	target.toolErrors += source.toolErrors;
 	target.toolErrorsRetried += source.toolErrorsRetried;
 	target.agentSelfCorrections += source.agentSelfCorrections;
+	target.escalatedUserCorrections += source.escalatedUserCorrections;
 }
