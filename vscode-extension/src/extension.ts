@@ -11779,6 +11779,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
       use24HourTime: this.getUse24HourTimeSetting(),
       hideAutomaticToolCalls: this.getHideAutomaticToolCallsSetting(),
       insights: this.buildCurrentInsights(stats),
+      correctionReport: stats.correctionReport ?? null,
       curationAnalysis: stats.curationAnalysis ?? null,
       sessionColumnSettings,
       copilotApiBalance: this._buildCopilotApiBalance(),

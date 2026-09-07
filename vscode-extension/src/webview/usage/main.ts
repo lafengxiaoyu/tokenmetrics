@@ -200,7 +200,7 @@ type UsageAnalysisStats = {
 	/** When true (default), rows tagged "auto" are hidden from the Tool Usage tables so only intentional tool calls are shown. */
 	hideAutomaticToolCalls?: boolean;
 	insights?: EvaluatedInsight[];
-	/** Correction-moment report: per-repo, over each repo's most recent sessions. Null when no moments were detected. */
+	/** Correction-moment report: per-repo, over each repo's most recent sessions. Undefined while the report is still loading, null when no moments were detected. */
 	correctionReport?: CorrectionReport | null;
 	/** Repeated-task candidates (skill suggestions). Null when no repeated task was found. */
 	repeatedTasks?: RepeatedTaskReport | null;
@@ -401,7 +401,7 @@ let pendingTabAnchor: string | null = null;
 let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let currentInsights: EvaluatedInsight[] = [];
 let activeCorrectionFilter: CorrectionMomentType | null = null;
-let currentCorrectionReport: CorrectionReport | null = null;
+let currentCorrectionReport: CorrectionReport | null | undefined = undefined;
 // Persisted across stats refreshes so the curation section doesn't disappear
 // when a periodic updateStats message omits curationAnalysis.
 let currentCurationAnalysis: ToolCurationAnalysis | null = null;
@@ -1656,7 +1656,9 @@ function _sanitizeCurationAnalysis(rawCa: unknown): ToolCurationAnalysis | null 
 
 /** Sanitize the optional correction/repeated-task reports onto the stats object. */
 function sanitizeOptionalReports(sanitized: UsageAnalysisStats, raw: any): void {
-	sanitized.correctionReport = sanitizeCorrectionReport(raw.correctionReport);
+	if (Object.prototype.hasOwnProperty.call(raw ?? {}, 'correctionReport')) {
+		sanitized.correctionReport = sanitizeCorrectionReport(raw.correctionReport);
+	}
 	sanitized.repeatedTasks = sanitizeRepeatedTaskReport(raw.repeatedTasks);
 }
 
@@ -3280,13 +3282,13 @@ function buildInsightsTabPanelHtml(insights: EvaluatedInsight[]): string {
 // ── Corrections tab ─────────────────────────────────────────────────────────
 
 /** Badge with the number of sessions carrying correction moments (empty when none). */
-function correctionsCountBadgeHtml(report: CorrectionReport | null): string {
+function correctionsCountBadgeHtml(report: CorrectionReport | null | undefined): string {
 	if (!report || report.sessionsWithMoments === 0) { return ''; }
 	return ` <span style="background:rgba(251,191,36,0.4);border-radius:10px;padding:1px 6px;font-size:11px;">${report.sessionsWithMoments}</span>`;
 }
 
 /** Corrections tab-bar button (extracted to keep buildUsageRootHtml under the complexity limit). */
-function correctionsTabButtonHtml(report: CorrectionReport | null): string {
+function correctionsTabButtonHtml(report: CorrectionReport | null | undefined): string {
 	return `<button class="tab-button ${activeTab === 'corrections' ? 'active' : ''}" data-tab="corrections"><span class="codicon codicon-debug-restart"></span> Corrections${correctionsCountBadgeHtml(report)}</button>`;
 }
 
@@ -3376,7 +3378,20 @@ function buildCorrectionSessionHtml(session: CorrectionSessionEntry, moments: Co
 		</div>`;
 }
 
-function buildCorrectionsTabPanelHtml(report: CorrectionReport | null): string {
+function buildCorrectionsTabPanelHtml(report: CorrectionReport | null | undefined): string {
+	if (typeof report === 'undefined') {
+		return `
+		<div id="tab-panel-corrections" class="tab-panel"${activeTab !== 'corrections' ? ' style="display:none"' : ''}>
+			<div class="section">
+				<div class="section-title"><span>🔁</span><span>Corrections</span></div>
+				<div class="section-subtitle">Moments where the agent corrected itself after an error, or you had to correct the agent.</div>
+				<div style="margin-top:16px; padding:16px; background:var(--bg-tertiary); border-radius:8px; font-size:12px; color:var(--text-secondary); text-align:center;">
+					⏳ Scanning recent sessions for correction moments…
+				</div>
+			</div>
+		</div>`;
+	}
+
 	if (!report || report.repos.length === 0) {
 		return `
 		<div id="tab-panel-corrections" class="tab-panel"${activeTab !== 'corrections' ? ' style="display:none"' : ''}>
@@ -3634,7 +3649,7 @@ function buildUsageRootHtml(
 				<button class="tab-button ${activeTab === 'agent' ? 'active' : ''}" data-tab="agent"><span class="codicon codicon-cloud"></span> Cloud Agent</button>
 				<button class="tab-button ${activeTab === 'worktrees' ? 'active' : ''}" data-tab="worktrees"><span class="codicon codicon-git-branch"></span> Worktrees</button>
 				<button class="tab-button ${activeTab === 'insights' ? 'active' : ''}" data-tab="insights"><span class="codicon codicon-lightbulb"></span> Insights${(stats.insights ?? []).filter(i => i.status === 'new').length > 0 ? ` <span style="background:rgba(96,165,250,0.4);border-radius:10px;padding:1px 6px;font-size:11px;">${(stats.insights ?? []).filter(i => i.status === 'new').length}</span>` : ''}</button>
-				${correctionsTabButtonHtml(stats.correctionReport ?? null)}
+				${correctionsTabButtonHtml(stats.correctionReport)}
 			</div>
 
 			${safeSectionHtml('Recent Sessions', () => buildSessionsTabPanelHtml(stats))}
@@ -3644,7 +3659,7 @@ function buildUsageRootHtml(
 			${safeSectionHtml('Repository PRs & Cloud Agent', () => buildReposAndAgentTabPanelsHtml())}
 			${safeSectionHtml('Worktrees', () => buildWorktreesTabPanelHtml())}
 			${safeSectionHtml('Insights', () => buildInsightsTabPanelHtml(stats.insights ?? []))}
-			${safeSectionHtml('Corrections', () => buildCorrectionsTabPanelHtml(stats.correctionReport ?? null))}
+			${safeSectionHtml('Corrections', () => buildCorrectionsTabPanelHtml(stats.correctionReport))}
 			<div class="footer">
 				Last updated: ${escapeHtml(new Date(stats.lastUpdated).toLocaleString())} · Updates every 5 minutes
 			</div>
@@ -5017,7 +5032,7 @@ function renderLayout(stats: UsageAnalysisStats): void {
 	}
 
 	const matrix = syncRenderLayoutState(stats);
-	currentCorrectionReport = stats.correctionReport ?? null;
+	currentCorrectionReport = stats.correctionReport;
 	const customizationHtml = safeSectionHtml('Workspace Customization', () => buildCustomizationSectionHtml(matrix));
 	// buildUsageAllKeysSets and the context-ref totals are cheap, pure aggregations over
 	// already-validated stats — not worth isolating individually. buildUsageRootHtml (and each
@@ -5222,6 +5237,9 @@ function handleUpdateStats(message: any): void {
 	const sanitized = sanitizeStats(message.data);
 	if (sanitized) {
 		_ulLoadingActive = false;
+		if (!Object.prototype.hasOwnProperty.call(message.data ?? {}, 'correctionReport')) {
+			sanitized.correctionReport = currentCorrectionReport;
+		}
 		// CLI-backed hosts include all buckets; VS Code omits them and keeps using lazy loading.
 		replaceRecentSessionsCache(sanitized.recentSessions);
 		renderLayout(sanitized);
