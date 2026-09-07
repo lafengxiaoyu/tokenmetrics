@@ -48,9 +48,21 @@ const INSTALL_HINT = [
 	'If a browser is already present elsewhere, point PLAYWRIGHT_BROWSERS_PATH at it.',
 ].join('\n');
 
+/**
+ * CI installs a pinned Playwright into its own package tree (see
+ * .github/workflows/dependencies/playwright) rather than globally, so a plain
+ * `require('playwright')` from this file never finds it via Node's normal
+ * upward node_modules search. Resolve that location explicitly.
+ */
+function pinnedWorkflowInstallRoot() {
+	return path.join(__dirname, '..', '..', '..', 'workflows', 'dependencies', 'playwright', 'node_modules');
+}
+
 /** Candidate module paths, cheapest first. */
 function candidatePaths() {
 	const paths = ['playwright', '@playwright/test', 'playwright-core'];
+	const pinnedRoot = pinnedWorkflowInstallRoot();
+	paths.push(`${pinnedRoot}/playwright`, `${pinnedRoot}/@playwright/test`, `${pinnedRoot}/playwright-core`);
 	// Global installs are not on a local script's resolution path, so ask npm
 	// where its global root is and look there too.
 	const globalRoot = globalNpmRoot();

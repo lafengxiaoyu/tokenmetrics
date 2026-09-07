@@ -200,7 +200,7 @@ type UsageAnalysisStats = {
 	/** When true (default), rows tagged "auto" are hidden from the Tool Usage tables so only intentional tool calls are shown. */
 	hideAutomaticToolCalls?: boolean;
 	insights?: EvaluatedInsight[];
-	/** Correction-moment report: per-repo, over each repo's most recent sessions. Null when no moments were detected. */
+	/** Correction-moment report: per-repo, over each repo's most recent sessions. Undefined while the report is still loading, null when no moments were detected. */
 	correctionReport?: CorrectionReport | null;
 	/** Repeated-task candidates (skill suggestions). Null when no repeated task was found. */
 	repeatedTasks?: RepeatedTaskReport | null;
@@ -392,6 +392,8 @@ const repoAnalysisState = new Map<string, RepoAnalysisRecord>();
 const repoAnalysisInFlight = new Set<string>();
 let selectedRepoPath: string | null = null;
 let isSwitchingRepository = false;
+/** When true, the Workspace Health repo list shows every workspace instead of grouping low-activity ones into "Other". */
+let showAllWorkspacesInHealth = false;
 let isBatchAnalysisInProgress = false;
 /** True while the single "Analyze Repo for Best Practices" analysis (no workspace matrix) runs. */
 let isSingleRepoAnalysisInProgress = false;
@@ -401,7 +403,7 @@ let pendingTabAnchor: string | null = null;
 let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let currentInsights: EvaluatedInsight[] = [];
 let activeCorrectionFilter: CorrectionMomentType | null = null;
-let currentCorrectionReport: CorrectionReport | null = null;
+let currentCorrectionReport: CorrectionReport | null | undefined = undefined;
 // Persisted across stats refreshes so the curation section doesn't disappear
 // when a periodic updateStats message omits curationAnalysis.
 let currentCurationAnalysis: ToolCurationAnalysis | null = null;
@@ -1656,7 +1658,9 @@ function _sanitizeCurationAnalysis(rawCa: unknown): ToolCurationAnalysis | null 
 
 /** Sanitize the optional correction/repeated-task reports onto the stats object. */
 function sanitizeOptionalReports(sanitized: UsageAnalysisStats, raw: any): void {
-	sanitized.correctionReport = sanitizeCorrectionReport(raw.correctionReport);
+	if (Object.prototype.hasOwnProperty.call(raw ?? {}, 'correctionReport')) {
+		sanitized.correctionReport = sanitizeCorrectionReport(raw.correctionReport);
+	}
 	sanitized.repeatedTasks = sanitizeRepeatedTaskReport(raw.repeatedTasks);
 }
 
@@ -3280,13 +3284,13 @@ function buildInsightsTabPanelHtml(insights: EvaluatedInsight[]): string {
 // ── Corrections tab ─────────────────────────────────────────────────────────
 
 /** Badge with the number of sessions carrying correction moments (empty when none). */
-function correctionsCountBadgeHtml(report: CorrectionReport | null): string {
+function correctionsCountBadgeHtml(report: CorrectionReport | null | undefined): string {
 	if (!report || report.sessionsWithMoments === 0) { return ''; }
 	return ` <span style="background:rgba(251,191,36,0.4);border-radius:10px;padding:1px 6px;font-size:11px;">${report.sessionsWithMoments}</span>`;
 }
 
 /** Corrections tab-bar button (extracted to keep buildUsageRootHtml under the complexity limit). */
-function correctionsTabButtonHtml(report: CorrectionReport | null): string {
+function correctionsTabButtonHtml(report: CorrectionReport | null | undefined): string {
 	return `<button class="tab-button ${activeTab === 'corrections' ? 'active' : ''}" data-tab="corrections"><span class="codicon codicon-debug-restart"></span> Corrections${correctionsCountBadgeHtml(report)}</button>`;
 }
 
@@ -3376,7 +3380,20 @@ function buildCorrectionSessionHtml(session: CorrectionSessionEntry, moments: Co
 		</div>`;
 }
 
-function buildCorrectionsTabPanelHtml(report: CorrectionReport | null): string {
+function buildCorrectionsTabPanelHtml(report: CorrectionReport | null | undefined): string {
+	if (typeof report === 'undefined') {
+		return `
+		<div id="tab-panel-corrections" class="tab-panel"${activeTab !== 'corrections' ? ' style="display:none"' : ''}>
+			<div class="section">
+				<div class="section-title"><span>🔁</span><span>Corrections</span></div>
+				<div class="section-subtitle">Moments where the agent corrected itself after an error, or you had to correct the agent.</div>
+				<div style="margin-top:16px; padding:16px; background:var(--bg-tertiary); border-radius:8px; font-size:12px; color:var(--text-secondary); text-align:center;">
+					⏳ Scanning recent sessions for correction moments…
+				</div>
+			</div>
+		</div>`;
+	}
+
 	if (!report || report.repos.length === 0) {
 		return `
 		<div id="tab-panel-corrections" class="tab-panel"${activeTab !== 'corrections' ? ' style="display:none"' : ''}>
@@ -3634,7 +3651,7 @@ function buildUsageRootHtml(
 				<button class="tab-button ${activeTab === 'agent' ? 'active' : ''}" data-tab="agent"><span class="codicon codicon-cloud"></span> Cloud Agent</button>
 				<button class="tab-button ${activeTab === 'worktrees' ? 'active' : ''}" data-tab="worktrees"><span class="codicon codicon-git-branch"></span> Worktrees</button>
 				<button class="tab-button ${activeTab === 'insights' ? 'active' : ''}" data-tab="insights"><span class="codicon codicon-lightbulb"></span> Insights${(stats.insights ?? []).filter(i => i.status === 'new').length > 0 ? ` <span style="background:rgba(96,165,250,0.4);border-radius:10px;padding:1px 6px;font-size:11px;">${(stats.insights ?? []).filter(i => i.status === 'new').length}</span>` : ''}</button>
-				${correctionsTabButtonHtml(stats.correctionReport ?? null)}
+				${correctionsTabButtonHtml(stats.correctionReport)}
 			</div>
 
 			${safeSectionHtml('Recent Sessions', () => buildSessionsTabPanelHtml(stats))}
@@ -3644,7 +3661,7 @@ function buildUsageRootHtml(
 			${safeSectionHtml('Repository PRs & Cloud Agent', () => buildReposAndAgentTabPanelsHtml())}
 			${safeSectionHtml('Worktrees', () => buildWorktreesTabPanelHtml())}
 			${safeSectionHtml('Insights', () => buildInsightsTabPanelHtml(stats.insights ?? []))}
-			${safeSectionHtml('Corrections', () => buildCorrectionsTabPanelHtml(stats.correctionReport ?? null))}
+			${safeSectionHtml('Corrections', () => buildCorrectionsTabPanelHtml(stats.correctionReport))}
 			<div class="footer">
 				Last updated: ${escapeHtml(new Date(stats.lastUpdated).toLocaleString())} · Updates every 5 minutes
 			</div>
@@ -5017,7 +5034,7 @@ function renderLayout(stats: UsageAnalysisStats): void {
 	}
 
 	const matrix = syncRenderLayoutState(stats);
-	currentCorrectionReport = stats.correctionReport ?? null;
+	currentCorrectionReport = stats.correctionReport;
 	const customizationHtml = safeSectionHtml('Workspace Customization', () => buildCustomizationSectionHtml(matrix));
 	// buildUsageAllKeysSets and the context-ref totals are cheap, pure aggregations over
 	// already-validated stats — not worth isolating individually. buildUsageRootHtml (and each
@@ -5162,6 +5179,16 @@ function wireRepositoryButtons(): void {
 
 	document.getElementById('repo-list-pane')?.addEventListener('click', (e: MouseEvent) => {
 		const target = e.target as HTMLElement;
+		if (target.closest('#btn-show-other-workspaces')) {
+			showAllWorkspacesInHealth = true;
+			renderRepositoryHygienePanels();
+			return;
+		}
+		if (target.closest('#btn-collapse-other-workspaces')) {
+			showAllWorkspacesInHealth = false;
+			renderRepositoryHygienePanels();
+			return;
+		}
 		const actionButton = target.closest<HTMLElement>('.btn-repo-action');
 		if (!actionButton) { return; }
 		const workspacePath = actionButton.getAttribute('data-workspace-path');
@@ -5222,6 +5249,9 @@ function handleUpdateStats(message: any): void {
 	const sanitized = sanitizeStats(message.data);
 	if (sanitized) {
 		_ulLoadingActive = false;
+		if (!Object.prototype.hasOwnProperty.call(message.data ?? {}, 'correctionReport')) {
+			sanitized.correctionReport = currentCorrectionReport;
+		}
 		// CLI-backed hosts include all buckets; VS Code omits them and keeps using lazy loading.
 		replaceRecentSessionsCache(sanitized.recentSessions);
 		renderLayout(sanitized);
@@ -5700,7 +5730,39 @@ function buildRepoAnalysisBodyElement(data: RepoAnalysisData, workspacePath?: st
 	return container;
 }
 
-function renderRepoListPane(listPane: HTMLElement, visibleWorkspaces: any[], hasSelectedRepository: boolean): void {
+/**
+ * Splits workspaces into a "major" group and a long-tail "other" group based on session count,
+ * so a handful of heavily-used workspaces aren't buried in a long list of one/two-session workspaces.
+ * The split point is found dynamically: the biggest proportional drop in session count between
+ * consecutive workspaces (sorted descending), as long as the drop is at least 2x and leaves a
+ * tail of 3+ workspaces (otherwise there's no meaningful "long tail" to group).
+ */
+function computeWorkspaceHealthGrouping(workspaces: WorkspaceCustomizationRow[]): { visible: WorkspaceCustomizationRow[]; otherWorkspaces: WorkspaceCustomizationRow[] } {
+	if (workspaces.length <= 6) {
+		return { visible: workspaces, otherWorkspaces: [] };
+	}
+	const sorted = [...workspaces].sort((a, b) => (Number(b.sessionCount) || 0) - (Number(a.sessionCount) || 0));
+	let splitIdx = -1;
+	let bestRatio = 1;
+	// Only consider split points that would leave a tail of 3+ workspaces — a later, larger
+	// ratio near the very end of the list isn't a valid candidate since it wouldn't group anything.
+	for (let i = 1; i <= sorted.length - 3; i++) {
+		const prev = Number(sorted[i - 1].sessionCount) || 0;
+		const curr = Number(sorted[i].sessionCount) || 0;
+		if (prev <= 0) { continue; }
+		const ratio = prev / Math.max(curr, 1);
+		if (ratio > bestRatio) {
+			bestRatio = ratio;
+			splitIdx = i;
+		}
+	}
+	if (splitIdx < 1 || bestRatio < 2) {
+		return { visible: sorted, otherWorkspaces: [] };
+	}
+	return { visible: sorted.slice(0, splitIdx), otherWorkspaces: sorted.slice(splitIdx) };
+}
+
+function renderRepoListPane(listPane: HTMLElement, visibleWorkspaces: WorkspaceCustomizationRow[], hasSelectedRepository: boolean, otherWorkspaces: WorkspaceCustomizationRow[] = [], canCollapse: boolean = false): void {
 	const colStyles = {
 		sessions: 'width: 60px; text-align: right; flex-shrink: 0; font-size: 11px; color: var(--text-primary);',
 		interactions: 'width: 80px; text-align: right; flex-shrink: 0; font-size: 11px; color: var(--text-primary);',
@@ -5742,7 +5804,21 @@ function renderRepoListPane(listPane: HTMLElement, visibleWorkspaces: any[], has
 				</vscode-button>
 			</div>
 		`;
-	}).join(''));
+	}).join('') + (otherWorkspaces.length > 0 ? `
+		<div class="repo-item repo-item-other" style="padding: 6px 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; background: var(--bg-secondary);">
+			<div style="flex: 1; min-width: 0; font-size: 12px; font-style: italic; color: var(--text-secondary);">
+				Other (${otherWorkspaces.length} repositor${otherWorkspaces.length === 1 ? 'y' : 'ies'} with low activity)
+			</div>
+			<div style="${colStyles.sessions}">${otherWorkspaces.reduce((sum, ws) => sum + (Number(ws.sessionCount) || 0), 0)}</div>
+			<div style="${colStyles.interactions}">${otherWorkspaces.reduce((sum, ws) => sum + (Number(ws.interactionCount) || 0), 0)}</div>
+			<div style="${colStyles.score}">—</div>
+			<vscode-button id="btn-show-other-workspaces" appearance="secondary" style="width: 110px; flex-shrink: 0;">Show all</vscode-button>
+		</div>
+	` : showAllWorkspacesInHealth && !hasSelectedRepository && canCollapse ? `
+		<div class="repo-item repo-item-other" style="padding: 6px 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: flex-end;">
+			<vscode-button id="btn-collapse-other-workspaces" appearance="secondary" style="width: 110px; flex-shrink: 0;">Show less</vscode-button>
+		</div>
+	` : ''));
 }
 
 function renderRepoDetailSuccess(detailsPane: HTMLElement, record: any, workspaceName: string): void {
@@ -5777,13 +5853,22 @@ function renderRepositoryHygienePanels(): void {
 	}
 
 	const hasSelectedRepository = !!selectedRepoPath && !isSwitchingRepository;
-	const visibleWorkspaces = hasSelectedRepository
-		? hygieneMatrixState.workspaces.filter((ws) => ws.workspacePath === selectedRepoPath)
-		: hygieneMatrixState.workspaces;
+	const grouping = computeWorkspaceHealthGrouping(hygieneMatrixState.workspaces);
+	const canCollapse = grouping.otherWorkspaces.length > 0;
+	let visibleWorkspaces: WorkspaceCustomizationRow[];
+	let otherWorkspaces: WorkspaceCustomizationRow[] = [];
+	if (hasSelectedRepository) {
+		visibleWorkspaces = hygieneMatrixState.workspaces.filter((ws) => ws.workspacePath === selectedRepoPath);
+	} else if (showAllWorkspacesInHealth || !canCollapse) {
+		visibleWorkspaces = grouping.visible.concat(grouping.otherWorkspaces);
+	} else {
+		visibleWorkspaces = grouping.visible;
+		otherWorkspaces = grouping.otherWorkspaces;
+	}
 
 	listContainer.classList.remove('repo-hygiene-pane-collapsed');
 	detailsContainer.classList.toggle('repo-hygiene-pane-collapsed', !hasSelectedRepository);
-	renderRepoListPane(listPane, visibleWorkspaces, hasSelectedRepository);
+	renderRepoListPane(listPane, visibleWorkspaces, hasSelectedRepository, otherWorkspaces, canCollapse);
 
 	if (!hasSelectedRepository || !selectedRepoPath) {
 		detailsPane.replaceChildren();
