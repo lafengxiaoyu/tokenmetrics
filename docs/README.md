@@ -94,3 +94,4 @@ Implementation notes and decisions captured during development sessions.
 | [adr/IMPLEMENTATION-SUMMARY-SOCIAL-SHARE.md](adr/IMPLEMENTATION-SUMMARY-SOCIAL-SHARE.md) | Social media share feature implementation summary |
 | [adr/FLUENCY-DATA-IMPLEMENTATION.md](adr/FLUENCY-DATA-IMPLEMENTATION.md) | Fluency data cloud upload — gap analysis and plan |
 | [adr/PR_SUMMARY.md](adr/PR_SUMMARY.md) | PR summary: comprehensive light theme support |
+| [adr/SQLITE-WAL-READS.md](adr/SQLITE-WAL-READS.md) | Why sql.js reads of data.db/opencode.db must merge pending WAL frames first |
