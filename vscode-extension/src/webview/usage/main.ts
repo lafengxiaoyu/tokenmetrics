@@ -4290,7 +4290,7 @@ function renderAutomaticCompactions(stats: AutomaticCompactionStats | undefined)
 		? entries.join(', ')
 		: 'No automatic compactions detected';
 	return `
-		<div class="automatic-compactions-card${stats.total > 0 ? ' automatic-compactions-card--active' : ''}"
+		<div class="automatic-compactions-card"
 			title="Automatic compactions remove earlier messages to fit the context window and can affect response quality.">
 			<div>
 				<div class="automatic-compactions-label">↩ Automatic compactions (last 7 days)</div>
