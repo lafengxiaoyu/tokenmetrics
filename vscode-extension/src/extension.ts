@@ -4729,7 +4729,11 @@ class CopilotTokenTracker implements vscode.Disposable {
 		// Wall-clock duration (includes idle gaps between turns) — kept for reference/future use.
 		const durationMs = computeSessionDurationMs(sessionData.firstInteraction, sessionData.lastInteraction);
 		// Net/active duration (excludes idle gaps between turns) — this is what's shown as "Duration".
-		const activeDurationMs = analysis.sessionDuration?.activeDurationMs;
+		// Only meaningful for formats with per-request timing data (e.g. VS Code Chat); other
+		// formats (e.g. Copilot CLI JSONL) report 0 here, which must not shadow the wall-clock
+		// duration below, or every such session would misleadingly show up as "<1m".
+		const rawActiveDurationMs = analysis.sessionDuration?.activeDurationMs;
+		const activeDurationMs = rawActiveDurationMs !== undefined && rawActiveDurationMs > 0 ? rawActiveDurationMs : undefined;
 		const workspace = this.resolveSessionWorkspaceName(sessionData, sessionFile);
 		return {
 			title: sessionData.title || null, filePath: sessionFile, interactions,

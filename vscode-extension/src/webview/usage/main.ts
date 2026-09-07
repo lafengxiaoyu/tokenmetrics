@@ -1142,6 +1142,16 @@ function isHydraFusionModel(model: string): boolean {
 	return getModelLookupCandidates(model).some(candidate => candidate.toLowerCase() === 'hydrafusion');
 }
 
+/**
+ * Returns the duration to display/sort by for a session: the active (non-idle) duration when
+ * available, falling back to the wall-clock duration for session formats that don't provide
+ * per-request timing data (e.g. Copilot CLI JSONL, where `activeDurationMs` is always 0).
+ * Single source of truth for this fallback so the cell renderer and sort comparator can't drift.
+ */
+function getEffectiveSessionDurationMs(s: TodaySessionSummary): number | undefined {
+	return s.activeDurationMs ? s.activeDurationMs : s.durationMs;
+}
+
 const SESSION_COLUMN_DEFS: SessionColumnDef[] = [
 	{ id: 'interactions', label: 'Turns', sortKey: 'interactions', align: 'right', render: s => formatCompactSessionNumber(s.interactions) },
 	{ id: 'toolCalls', label: 'Tools', sortKey: 'toolCalls', align: 'right', render: s => formatCompactSessionNumber(s.toolCalls) },
@@ -1160,7 +1170,7 @@ const SESSION_COLUMN_DEFS: SessionColumnDef[] = [
 	{ id: 'workspace', label: 'Workspace', sortKey: 'workspace', align: 'left', cellStyle: 'max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', render: s => { const workspace = escapeHtml(s.workspace || '—'); return { html: workspace, title: workspace }; } },
 	{ id: 'models', label: 'Models', align: 'left', cellStyle: 'font-size:11px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', render: s => { const models = s.models.map(m => escapeHtml(getModelDisplayName(m))).join(', ') || '—'; return { html: models, title: models }; } },
 	{ id: 'durationMs', label: 'Duration', sortKey: 'durationMs', align: 'right', cellStyle: 'white-space:nowrap;', render: s => {
-		const net = s.activeDurationMs ?? s.durationMs;
+		const net = getEffectiveSessionDurationMs(s);
 		const wallLabel = s.durationMs !== undefined ? `Wall time: ${formatDurationShort(s.durationMs)}` : undefined;
 		return { html: formatDurationShort(net), ...(wallLabel ? { title: wallLabel } : {}) };
 	} },
@@ -1192,8 +1202,128 @@ const recentSessionsCache: { [period: string]: TodaySessionSummary[] } = {};
 /** Which optional columns are currently visible. Title (and the row number) are always shown. */
 let enabledSessionColumns: Set<SessionColumnId> = new Set(ALL_SESSION_COLUMN_IDS);
 
+// --- Recent Sessions pill filters (Editor / Model / Model vendor / HydraFusion) ---
+/** Active editor pill filters. Empty set means "no filter" (show all editors). */
+let sessionFilterEditors: Set<string> = new Set();
+/** Active model-vendor pill filters (e.g. "Anthropic", "OpenAI"). Empty set means "no filter". */
+let sessionFilterVendors: Set<string> = new Set();
+/** Active model pill filters. Empty set means "no filter". */
+let sessionFilterModels: Set<string> = new Set();
+/** Quick toggle: when true, only show sessions that used a HydraFusion model. */
+let sessionFilterHydraFusionOnly = false;
+
 function saveSessionColumnSettings(): void {
 	vscode.postMessage({ command: 'saveSessionColumnSettings', settings: { enabledColumns: Array.from(enabledSessionColumns) } });
+}
+
+/** Returns true when a session passes all currently active pill filters. */
+function sessionMatchesFilters(s: TodaySessionSummary): boolean {
+	if (sessionFilterHydraFusionOnly && !s.models.some(isHydraFusionModel)) { return false; }
+	if (sessionFilterEditors.size > 0 && !sessionFilterEditors.has(s.editor || 'unknown')) { return false; }
+	if (sessionFilterModels.size > 0 && !s.models.some(m => sessionFilterModels.has(m))) { return false; }
+	if (sessionFilterVendors.size > 0 && !s.models.some(m => sessionFilterVendors.has(getModelBillingProvider(m)))) { return false; }
+	return true;
+}
+
+/** Whether any Recent Sessions pill filter is currently active. */
+function hasActiveSessionFilters(): boolean {
+	return sessionFilterHydraFusionOnly || sessionFilterEditors.size > 0 || sessionFilterVendors.size > 0 || sessionFilterModels.size > 0;
+}
+
+type SessionFilterOption = { value: string; label: string; count: number };
+
+/** Computes the distinct editor/vendor/model values (with counts) present across the given sessions, used to render filter pills. */
+function computeSessionFilterOptions(sessions: TodaySessionSummary[]): {
+	editors: SessionFilterOption[];
+	vendors: SessionFilterOption[];
+	models: SessionFilterOption[];
+	hydraFusionCount: number;
+} {
+	const editorCounts = new Map<string, number>();
+	const vendorCounts = new Map<string, number>();
+	const modelCounts = new Map<string, number>();
+	let hydraFusionCount = 0;
+	for (const s of sessions) {
+		const editor = s.editor || 'unknown';
+		editorCounts.set(editor, (editorCounts.get(editor) || 0) + 1);
+		const vendorsInSession = new Set<string>();
+		let hasHydra = false;
+		for (const m of s.models) {
+			modelCounts.set(m, (modelCounts.get(m) || 0) + 1);
+			vendorsInSession.add(getModelBillingProvider(m));
+			if (isHydraFusionModel(m)) { hasHydra = true; }
+		}
+		for (const v of vendorsInSession) { vendorCounts.set(v, (vendorCounts.get(v) || 0) + 1); }
+		if (hasHydra) { hydraFusionCount++; }
+	}
+	const toSortedOptions = (counts: Map<string, number>, labelFn: (value: string) => string): SessionFilterOption[] =>
+		Array.from(counts.entries())
+			.map(([value, count]) => ({ value, label: labelFn(value), count }))
+			.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+	return {
+		editors: toSortedOptions(editorCounts, v => v),
+		vendors: toSortedOptions(vendorCounts, v => v),
+		models: toSortedOptions(modelCounts, getModelDisplayName),
+		hydraFusionCount,
+	};
+}
+
+/** Renders one labeled group of toggle pills (e.g. "Editor: VS Code (12) JetBrains (3)"). */
+function buildFilterPillGroupHtml(groupLabel: string, filterType: string, items: SessionFilterOption[], activeSet: Set<string>): string {
+	if (items.length === 0) { return ''; }
+	const pills = items.map(({ value, label, count }) => {
+		const isActive = activeSet.has(value);
+		const safeLabel = escapeHtml(label);
+		return `<button type="button" class="session-filter-pill${isActive ? ' active' : ''}" data-filter-type="${filterType}" data-filter-value="${escapeHtml(value)}" aria-pressed="${isActive}" title="${safeLabel}: ${count} session${count === 1 ? '' : 's'}">${safeLabel} <span class="session-filter-pill-count">${count}</span></button>`;
+	}).join('');
+	return `<div class="session-filter-group"><span class="session-filter-group-label">${escapeHtml(groupLabel)}:</span>${pills}</div>`;
+}
+
+/** Renders the pill filter bar above the Recent Sessions table (Editor / Vendor / Model / HydraFusion). */
+function buildSessionFilterBarHtml(sessions: TodaySessionSummary[]): string {
+	if (!sessions || sessions.length === 0) { return ''; }
+	const opts = computeSessionFilterOptions(sessions);
+	if (opts.editors.length === 0 && opts.vendors.length === 0 && opts.models.length === 0) { return ''; }
+	const groups: string[] = [];
+	if (opts.hydraFusionCount > 0) {
+		const isActive = sessionFilterHydraFusionOnly;
+		groups.push(`<div class="session-filter-group"><button type="button" class="session-filter-pill session-filter-pill-hydrafusion${isActive ? ' active' : ''}" data-filter-type="hydrafusion" data-filter-value="true" aria-pressed="${isActive}" title="Show only sessions that used HydraFusion">⚡ HydraFusion <span class="session-filter-pill-count">${opts.hydraFusionCount}</span></button></div>`);
+	}
+	groups.push(buildFilterPillGroupHtml('Editor', 'editor', opts.editors, sessionFilterEditors));
+	groups.push(buildFilterPillGroupHtml('Vendor', 'vendor', opts.vendors, sessionFilterVendors));
+	groups.push(buildFilterPillGroupHtml('Model', 'model', opts.models, sessionFilterModels));
+	const clearButton = hasActiveSessionFilters()
+		? `<button type="button" id="sessions-filter-clear" class="session-filter-pill session-filter-pill-clear">✕ Clear filters</button>`
+		: '';
+	return `<div class="session-filter-bar">${groups.filter(Boolean).join('')}${clearButton}</div>`;
+}
+
+/** Handles a click on a filter pill or the "Clear filters" button; returns true if it was handled. */
+function handleSessionFilterPillClick(target: HTMLElement): boolean {
+	const clearButton = target.closest<HTMLElement>('#sessions-filter-clear');
+	if (clearButton) {
+		sessionFilterEditors.clear();
+		sessionFilterVendors.clear();
+		sessionFilterModels.clear();
+		sessionFilterHydraFusionOnly = false;
+		return true;
+	}
+	const pill = target.closest<HTMLElement>('.session-filter-pill');
+	if (!pill) { return false; }
+	const filterType = pill.getAttribute('data-filter-type');
+	const value = pill.getAttribute('data-filter-value');
+	if (filterType === 'hydrafusion') {
+		sessionFilterHydraFusionOnly = !sessionFilterHydraFusionOnly;
+		return true;
+	}
+	if (!value) { return false; }
+	const targetSet = filterType === 'editor' ? sessionFilterEditors
+		: filterType === 'vendor' ? sessionFilterVendors
+		: filterType === 'model' ? sessionFilterModels
+		: undefined;
+	if (!targetSet) { return false; }
+	if (targetSet.has(value)) { targetSet.delete(value); } else { targetSet.add(value); }
+	return true;
 }
 
 function getSessionSortIndicator(column: SessionSortColumn): string {
@@ -1205,7 +1335,7 @@ const _todaySessionColumnComparators: Partial<Record<SessionSortColumn, (a: Toda
 	title: (a, b) => (a.title || '').localeCompare(b.title || ''),
 	editor: (a, b) => (a.editor || '').localeCompare(b.editor || ''),
 	workspace: (a, b) => (a.workspace || '').localeCompare(b.workspace || ''),
-	durationMs: (a, b) => (a.activeDurationMs ?? a.durationMs ?? -1) - (b.activeDurationMs ?? b.durationMs ?? -1),
+	durationMs: (a, b) => (getEffectiveSessionDurationMs(a) ?? -1) - (getEffectiveSessionDurationMs(b) ?? -1),
 	subAgentCalls: (a, b) => (a.subAgentCalls ?? 0) - (b.subAgentCalls ?? 0),
 	lastActivity: (a, b) => (a.lastActivity || '').localeCompare(b.lastActivity || ''),
 };
@@ -1233,8 +1363,14 @@ function renderTodaySessionsTable(sessions: TodaySessionSummary[]): string {
 }
 
 function buildSessionsTableHtml(sessions: TodaySessionSummary[]): string {
-	const sorted = sortTodaySessions(sessions);
+	const filterBarHtml = buildSessionFilterBarHtml(sessions);
+	const filtered = sessions.filter(sessionMatchesFilters);
+	const sorted = sortTodaySessions(filtered);
 	const visibleColumns = SESSION_COLUMN_DEFS.filter(c => enabledSessionColumns.has(c.id));
+
+	if (sorted.length === 0) {
+		return `${filterBarHtml}<div style="color: var(--text-secondary); font-size: 13px; padding: 16px;">No sessions match the selected filters.</div>`;
+	}
 
 	const rows = sorted.map((s, idx) => {
 		const title = escapeHtml(s.title || 'Untitled session');
@@ -1262,6 +1398,7 @@ function buildSessionsTableHtml(sessions: TodaySessionSummary[]): string {
 	}).join('');
 
 	return `
+		${filterBarHtml}
 		<div style="overflow-x:auto;">
 		<table class="sessions-table" style="width:100%; border-collapse:collapse; min-width:1050px;">
 			<thead>
@@ -1308,6 +1445,12 @@ function setupSessionsTableSort(): void {
 			if (file) {
 				vscode.postMessage({ command: 'openSessionFile', file });
 			}
+			return;
+		}
+		// Handle filter pill / clear-filters clicks
+		if (handleSessionFilterPillClick(e.target as HTMLElement)) {
+			const container = document.getElementById('sessions-table-container');
+			if (container) { setHtml(container, buildSessionsTableHtml(cachedTodaySessions)); }
 			return;
 		}
 		// Handle sortable column header clicks
