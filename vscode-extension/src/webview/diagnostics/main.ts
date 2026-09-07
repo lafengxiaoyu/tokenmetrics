@@ -1536,6 +1536,9 @@ function activateTab(tabId: string): boolean {
 
     tabButton.classList.add("active");
     tabContent.classList.add("active");
+    // Let the host record the subview so the what's-new announcer can skip tabs
+    // the user already found for themselves. Fire-and-forget.
+    vscode.postMessage({ command: "viewTabOpened", view: "diagnostics", tab: tabId });
     return true;
   }
   return false;

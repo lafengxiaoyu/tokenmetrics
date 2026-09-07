@@ -156,6 +156,11 @@
         "category": "AI Engineering Fluency"
       },
       {
+        "command": "aiEngineeringFluency.showWhatsNew",
+        "title": "%command.showWhatsNew.title%",
+        "category": "AI Engineering Fluency"
+      },
+      {
         "command": "aiEngineeringFluency.authenticateGitHub",
         "title": "%command.authenticateGitHub.title%",
         "category": "AI Engineering Fluency"
@@ -475,6 +480,11 @@
           "type": "boolean",
           "default": true,
           "description": "%config.insights.toastsEnabled.description%"
+        },
+        "aiEngineeringFluency.whatsNew.notificationsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.whatsNew.notificationsEnabled.description%"
         },
         "aiEngineeringFluency.insights.cadenceDays": {
           "type": "number",

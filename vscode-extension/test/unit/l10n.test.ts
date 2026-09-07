@@ -125,3 +125,31 @@ test('l10n: clipboard-failure keys resolve in zh-cn', () => {
 		mock.setLanguage('en');
 	}
 });
+
+test("l10n: what's-new notification keys resolve in English", () => {
+	// The two buttons on the one-a-day new-feature notification. A missing key
+	// here would put a raw `whatsNew.takeMeThere` on the button, which is the
+	// kind of thing nobody notices until a user reports it.
+	const expected: Record<string, string> = {
+		'whatsNew.takeMeThere': 'Take me there',
+		'whatsNew.seeAll': 'See what else is new',
+	};
+	for (const [key, english] of Object.entries(expected)) {
+		assert.equal(t(key), english, `English value for ${key}`);
+	}
+});
+
+test("l10n: what's-new notification keys resolve in zh-cn", () => {
+	mock.setLanguage('zh-cn');
+	try {
+		const expected: Record<string, string> = {
+			'whatsNew.takeMeThere': '带我去看看',
+			'whatsNew.seeAll': '查看其他新增内容',
+		};
+		for (const [key, chinese] of Object.entries(expected)) {
+			assert.equal(t(key), chinese, `zh-cn value for ${key}`);
+		}
+	} finally {
+		mock.setLanguage('en');
+	}
+});

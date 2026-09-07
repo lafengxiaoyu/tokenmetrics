@@ -1034,6 +1034,9 @@ function wireEvents(): void {
 	document.querySelectorAll<HTMLButtonElement>('.eff-tab').forEach(btn => {
 		btn.addEventListener('click', () => {
 			activeTab = btn.dataset.tab as TabId;
+			// Report the subview so the what's-new announcer can skip tabs the user
+			// already found for themselves. Fire-and-forget.
+			vscode.postMessage({ command: 'viewTabOpened', view: 'efficiency', tab: activeTab });
 			render();
 		});
 	});
