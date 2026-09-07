@@ -510,9 +510,10 @@ function isUsageAnalysisTab(tab: string): tab is UsageAnalysisTab {
 
 class CopilotTokenTracker implements vscode.Disposable {
 	// Cache version - increment this when making changes that require cache invalidation.
-	// The merged task-classification + chart-state work changes cached session metadata and
-	// daily rollup contracts, so invalidate older entries to force a clean rebuild.
-	private static readonly CACHE_VERSION = 70;
+	// Correction detection now requires corroboration for agent-self-correction moments and
+	// adds intensity/escalation fields to user-correction moments — old cached moments were
+	// computed under the previous (uncorroborated) logic and lack these fields.
+	private static readonly CACHE_VERSION = 71;
 	/** Initial stats should not wait indefinitely for one inaccessible or stalled session. */
 	private static readonly SESSION_PRELOAD_TIMEOUT_MS = 15_000;
 	// Maximum length for displaying workspace IDs in diagnostics/customization matrix

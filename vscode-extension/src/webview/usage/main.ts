@@ -123,6 +123,12 @@ type CorrectionMoment = {
 	file?: string;
 	retried?: boolean;
 	matchedPattern?: string;
+	/** `user-correction` only: shouting/punctuation/intensifier cues on the message itself. */
+	intensity?: 'strong';
+	/** `user-correction` only: clustered with an earlier correction a few turns back. */
+	escalated?: boolean;
+	/** `agent-self-correction` only: which nearby signal corroborated the phrase match. */
+	corroboratedBy?: 'tool-error' | 'edit-retry' | 'user-correction';
 };
 
 type CorrectionCounts = {
@@ -132,6 +138,7 @@ type CorrectionCounts = {
 	toolErrors: number;
 	toolErrorsRetried: number;
 	agentSelfCorrections: number;
+	escalatedUserCorrections: number;
 };
 
 type CorrectionSessionEntry = {
@@ -1706,6 +1713,9 @@ function sanitizeCorrectionMoment(raw: any): CorrectionMoment | null {
 		file: typeof raw.file === 'string' ? raw.file : undefined,
 		retried: raw.retried === true ? true : undefined,
 		matchedPattern: typeof raw.matchedPattern === 'string' ? raw.matchedPattern : undefined,
+		intensity: raw.intensity === 'strong' ? 'strong' : undefined,
+		escalated: raw.escalated === true ? true : undefined,
+		corroboratedBy: ['tool-error', 'edit-retry', 'user-correction'].includes(raw.corroboratedBy) ? raw.corroboratedBy : undefined,
 	};
 }
 
@@ -1718,6 +1728,7 @@ function sanitizeCorrectionCounts(raw: any): CorrectionCounts {
 		toolErrors: num(raw?.toolErrors),
 		toolErrorsRetried: num(raw?.toolErrorsRetried),
 		agentSelfCorrections: num(raw?.agentSelfCorrections),
+		escalatedUserCorrections: num(raw?.escalatedUserCorrections),
 	};
 }
 
@@ -3540,9 +3551,16 @@ function buildCorrectionMomentHtml(moment: CorrectionMoment, sessionFile: string
 	const detail = moment.type === 'tool-error'
 		? `tool \`${moment.tool ?? '?'}\`${moment.retried ? ' — retried shortly after' : ''}`
 		: (moment.matchedPattern ? `matched ${moment.matchedPattern}` : '');
+	const escalationBadge = moment.escalated
+		? `<span title="Clustered with an earlier correction a few turns back" style="flex-shrink:0; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; border:1px solid rgba(248,113,113,0.85); color:var(--text-primary); background:rgba(248,113,113,0.12); white-space:nowrap;">📈 escalating</span>`
+		: '';
+	const intensityBadge = moment.intensity === 'strong'
+		? `<span title="Shouting / repeated punctuation / an intensifier like &quot;again&quot;" style="flex-shrink:0; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; border:1px solid rgba(248,113,113,0.85); color:var(--text-primary); background:rgba(248,113,113,0.12); white-space:nowrap;">🔥 intense</span>`
+		: '';
 	return `
 		<button type="button" class="correction-moment" data-correction-file="${escapeHtml(sessionFile)}" data-correction-turn="${moment.turnNumber}" title="Open this turn in the session log viewer" style="display:flex; width:100%; gap:10px; align-items:flex-start; padding:8px 0; border:0; border-bottom:1px solid var(--bg-tertiary); background:none; color:inherit; cursor:pointer; text-align:left;">
 			<span style="flex-shrink:0; font-size:10px; font-weight:700; letter-spacing:0.03em; padding:2px 8px; border-radius:10px; border:1px solid ${meta.color}; color:var(--text-primary); background:${meta.color.replace('0.85', '0.12')}; white-space:nowrap;">${escapeHtml(meta.label)}</span>
+			${escalationBadge}${intensityBadge}
 			<div style="flex:1; min-width:0;">
 				<div style="font-size:12px; color:var(--text-primary); opacity:0.9; overflow-wrap:anywhere;">${escapeHtml(moment.snippet)}</div>
 				<div style="font-size:11px; color:var(--text-secondary); margin-top:3px;">
@@ -3607,6 +3625,9 @@ function buildCorrectionsTabPanelHtml(report: CorrectionReport | null | undefine
 		chip(c.editSelfCorrections, 'edit self-corrections', 'edit-self-correction'),
 		chip(c.agentSelfCorrections, 'agent self-corrections', 'agent-self-correction'),
 	].filter(Boolean).join(' ');
+	const escalationNote = c.escalatedUserCorrections > 0
+		? `<span title="Corrections landing within a few turns of an earlier one — no sentiment data is available from any editor, this is the closest local proxy for rising frustration" style="font-size:11px; padding:2px 10px; border-radius:10px; background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.85); color:var(--text-primary);">📈 ${c.escalatedUserCorrections} escalating</span>`
+		: '';
 
 	const repoSections = report.repos.map(repo => {
 		const sessions = repo.sessions
@@ -3641,7 +3662,7 @@ function buildCorrectionsTabPanelHtml(report: CorrectionReport | null | undefine
 					sessions without corrections are not listed. Summary counts include all detected moments; long sessions show a capped detail sample.
 					Pattern-based matches are candidates, not verdicts; open the session in the log viewer for full context.
 				</div>
-				<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;">${summaryChips}</div>
+				<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;">${summaryChips}${escalationNote}</div>
 				${repoSections}
 				${emptyFilteredState}
 			</div>

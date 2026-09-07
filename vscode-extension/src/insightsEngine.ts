@@ -1399,6 +1399,26 @@ export const INSIGHT_CATALOG: InsightDefinition[] = [
 		weight: 55,
 	},
 	{
+		id: 'corrections-user-escalation',
+		category: 'customization',
+		severity: 'opportunity',
+		title: '📈 Corrections are clustering, not one-off',
+		buildBody: (ctx) => {
+			const c = ctx.last30Days.corrections;
+			const escalated = c?.escalatedUserCorrections ?? 0;
+			const sessions = c?.sessionsWithEscalations ?? 0;
+			return `In the last 30 days, ${escalated} correction${escalated !== 1 ? 's' : ''} landed within a few turns of ` +
+				`an earlier one in the same session, across ${sessions} session${sessions !== 1 ? 's' : ''} — no single editor records a real ` +
+				`sentiment score, but repeated back-to-back pushback is the closest local signal we have to "this conversation is going badly". ` +
+				`When you see this, it's often faster to stop, restate the goal or constraint clearly, and start a fresh turn than to keep correcting course. ` +
+				`See the Corrections tab (moments marked 📈) for exactly where.`;
+		},
+		actionLabel: 'View Corrections',
+		actionCommand: 'aiEngineeringFluency.openCorrectionsTab',
+		appliesTo: (ctx) => (ctx.last30Days.corrections?.escalatedUserCorrections ?? 0) >= 2,
+		weight: 60,
+	},
+	{
 		id: 'repeated-task-skill-candidate',
 		category: 'customization',
 		severity: 'opportunity',

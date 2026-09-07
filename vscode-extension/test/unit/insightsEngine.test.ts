@@ -721,7 +721,7 @@ test('mode-diversity-low: does NOT fire with too little data', () => {
 // ---------------------------------------------------------------------------
 
 function emptyCorrections() {
-	return { userCorrections: 0, editRetries: 0, editSelfCorrections: 0, toolErrors: 0, toolErrorsRetried: 0, agentSelfCorrections: 0, sessionsWithMoments: 0 };
+	return { userCorrections: 0, editRetries: 0, editSelfCorrections: 0, toolErrors: 0, toolErrorsRetried: 0, agentSelfCorrections: 0, escalatedUserCorrections: 0, sessionsWithMoments: 0 };
 }
 
 test('corrections-user-pushback: fires at >= 3 user corrections', () => {
@@ -761,6 +761,24 @@ test('corrections-tool-errors: does NOT fire on low volume or missing data', () 
 	low.last30Days.corrections = { ...emptyCorrections(), toolErrors: 4, editRetries: 4, sessionsWithMoments: 2 };
 	assert.equal(evaluateInsights(low, {}, 7, null).find(i => i.id === 'corrections-tool-errors'), undefined);
 	assert.equal(evaluateInsights(makeCtx(), {}, 7, null).find(i => i.id === 'corrections-tool-errors'), undefined);
+});
+
+test('corrections-user-escalation: fires at >= 2 escalated corrections', () => {
+	const ctx = makeCtx();
+	ctx.last30Days.corrections = { ...emptyCorrections(), userCorrections: 3, escalatedUserCorrections: 2, sessionsWithMoments: 2, sessionsWithEscalations: 1 };
+	const results = evaluateInsights(ctx, {}, 7, null);
+	const insight = results.find(i => i.id === 'corrections-user-escalation');
+	assert.ok(insight, 'should fire at the threshold');
+	assert.match(insight.body, /2 corrections/);
+	assert.match(insight.body, /across 1 session/);
+	assert.equal(insight.actionCommand, 'aiEngineeringFluency.openCorrectionsTab');
+});
+
+test('corrections-user-escalation: does NOT fire below the threshold or without data', () => {
+	const below = makeCtx();
+	below.last30Days.corrections = { ...emptyCorrections(), userCorrections: 1, escalatedUserCorrections: 1, sessionsWithMoments: 1 };
+	assert.equal(evaluateInsights(below, {}, 7, null).find(i => i.id === 'corrections-user-escalation'), undefined);
+	assert.equal(evaluateInsights(makeCtx(), {}, 7, null).find(i => i.id === 'corrections-user-escalation'), undefined);
 });
 
 // ---------------------------------------------------------------------------

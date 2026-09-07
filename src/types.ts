@@ -608,6 +608,26 @@ export interface CorrectionMoment {
   retried?: boolean;
   /** Label of the heuristic pattern that matched (pattern-based types only). */
   matchedPattern?: string;
+  /**
+   * `user-correction` only: set when the message itself carries extra intensity cues
+   * (ALL-CAPS emphasis, repeated `!`/`?`, "again"/"seriously"-style intensifiers) on top
+   * of the base correction phrasing. A rough proxy for "the user sounds more frustrated
+   * than a plain correction", not a verdict.
+   */
+  intensity?: 'strong';
+  /**
+   * `user-correction` only: set when this is the second (or later) user-correction
+   * within a short rolling window of turns, i.e. corrections are clustering rather than
+   * being one-off — the closest local proxy for rising frustration we can compute
+   * without any external sentiment data.
+   */
+  escalated?: boolean;
+  /**
+   * `agent-self-correction` only: which nearby signal corroborated the phrase match.
+   * `agent-self-correction` moments are only emitted when corroborated (see
+   * correctionDetection.ts) — this records why, mainly for UI/debugging transparency.
+   */
+  corroboratedBy?: 'tool-error' | 'edit-retry' | 'user-correction';
 }
 
 /** Aggregated correction-moment counters (per session, repo, or period). */
@@ -618,6 +638,8 @@ export interface CorrectionCounts {
   toolErrors: number;
   toolErrorsRetried: number;
   agentSelfCorrections: number;
+  /** Count of `user-correction` moments with `escalated: true` (see CorrectionMoment). */
+  escalatedUserCorrections: number;
 }
 
 /** Period-level correction counters plus the number of sessions that had any moment. */
@@ -625,6 +647,8 @@ export interface CorrectionPeriodCounts extends CorrectionCounts {
   sessionsWithMoments: number;
   /** Sessions containing at least one user-correction moment. */
   sessionsWithUserCorrections?: number;
+  /** Sessions containing at least one escalated user-correction moment. */
+  sessionsWithEscalations?: number;
 }
 
 /** One session's entry in the correction report. */
