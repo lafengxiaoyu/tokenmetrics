@@ -1140,6 +1140,16 @@ function isHydraFusionModel(model: string): boolean {
 	return getModelLookupCandidates(model).some(candidate => candidate.toLowerCase() === 'hydrafusion');
 }
 
+/**
+ * Returns the duration to display/sort by for a session: the active (non-idle) duration when
+ * available, falling back to the wall-clock duration for session formats that don't provide
+ * per-request timing data (e.g. Copilot CLI JSONL, where `activeDurationMs` is always 0).
+ * Single source of truth for this fallback so the cell renderer and sort comparator can't drift.
+ */
+function getEffectiveSessionDurationMs(s: TodaySessionSummary): number | undefined {
+	return s.activeDurationMs ? s.activeDurationMs : s.durationMs;
+}
+
 const SESSION_COLUMN_DEFS: SessionColumnDef[] = [
 	{ id: 'interactions', label: 'Turns', sortKey: 'interactions', align: 'right', render: s => formatCompactSessionNumber(s.interactions) },
 	{ id: 'toolCalls', label: 'Tools', sortKey: 'toolCalls', align: 'right', render: s => formatCompactSessionNumber(s.toolCalls) },
@@ -1158,10 +1168,7 @@ const SESSION_COLUMN_DEFS: SessionColumnDef[] = [
 	{ id: 'workspace', label: 'Workspace', sortKey: 'workspace', align: 'left', cellStyle: 'max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', render: s => { const workspace = escapeHtml(s.workspace || '—'); return { html: workspace, title: workspace }; } },
 	{ id: 'models', label: 'Models', align: 'left', cellStyle: 'font-size:11px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', render: s => { const models = s.models.map(m => escapeHtml(getModelDisplayName(m))).join(', ') || '—'; return { html: models, title: models }; } },
 	{ id: 'durationMs', label: 'Duration', sortKey: 'durationMs', align: 'right', cellStyle: 'white-space:nowrap;', render: s => {
-		// A zero (but defined) activeDurationMs means no per-request timing data was available
-		// for this session format (e.g. Copilot CLI JSONL) — fall back to wall-clock duration
-		// instead of showing a misleading "<1m".
-		const net = s.activeDurationMs ? s.activeDurationMs : s.durationMs;
+		const net = getEffectiveSessionDurationMs(s);
 		const wallLabel = s.durationMs !== undefined ? `Wall time: ${formatDurationShort(s.durationMs)}` : undefined;
 		return { html: formatDurationShort(net), ...(wallLabel ? { title: wallLabel } : {}) };
 	} },
@@ -1326,7 +1333,7 @@ const _todaySessionColumnComparators: Partial<Record<SessionSortColumn, (a: Toda
 	title: (a, b) => (a.title || '').localeCompare(b.title || ''),
 	editor: (a, b) => (a.editor || '').localeCompare(b.editor || ''),
 	workspace: (a, b) => (a.workspace || '').localeCompare(b.workspace || ''),
-	durationMs: (a, b) => (a.activeDurationMs || a.durationMs || -1) - (b.activeDurationMs || b.durationMs || -1),
+	durationMs: (a, b) => (getEffectiveSessionDurationMs(a) ?? -1) - (getEffectiveSessionDurationMs(b) ?? -1),
 	subAgentCalls: (a, b) => (a.subAgentCalls ?? 0) - (b.subAgentCalls ?? 0),
 	lastActivity: (a, b) => (a.lastActivity || '').localeCompare(b.lastActivity || ''),
 };

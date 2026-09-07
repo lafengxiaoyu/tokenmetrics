@@ -353,6 +353,69 @@ test('marks HydraFusion sessions in the recent sessions list', async () => {
 	assert.equal(costCell?.title, '$12.3450');
 });
 
+test('Recent Sessions Duration column falls back to wall-clock time when activeDurationMs is zero', async () => {
+	// Regression test for a bug where session formats without per-request timing data (e.g.
+	// Copilot CLI JSONL) always reported activeDurationMs === 0, and the Duration column's old
+	// `??` fallback treated that defined zero as "no fallback needed", showing a misleading "<1m"
+	// for sessions that actually ran much longer.
+	const stats = buildStats();
+	const cliSession = {
+		title: 'Long CLI session', filePath: 'cli-session.jsonl', interactions: 40, toolCalls: 53,
+		inputTokens: 3700000, outputTokens: 14300, thinkingTokens: 0, cachedTokens: 3600000, totalTokens: 3800000,
+		estimatedCost: 1.13, editor: 'Copilot CLI (App)', models: ['gpt-5.6-terra'],
+		lastActivity: '2026-09-06T11:00:00.000Z',
+		durationMs: 125 * 60_000, // 125 minutes of wall-clock time
+		activeDurationMs: 0, // no per-request timing available for this format
+	};
+	stats.todaySessions = [cliSession];
+	const harness = await bootWebview(stats);
+
+	const row = harness.window.document.querySelector('.sessions-table tbody tr');
+	assert.ok(row, 'expects a rendered session row');
+	assert.match(row.textContent, /2h 05m/, 'Duration should fall back to the 125-minute wall-clock time, not "<1m"');
+	assert.doesNotMatch(row.textContent, /<1m/, 'a zero-but-defined activeDurationMs must not be shown as "<1m"');
+});
+
+test('Recent Sessions pill filters narrow the table by editor, vendor, model, and HydraFusion', async () => {
+	const stats = buildStats();
+	const baseSession = {
+		interactions: 10, toolCalls: 5, inputTokens: 1000, outputTokens: 500, thinkingTokens: 0,
+		cachedTokens: 0, totalTokens: 1500, estimatedCost: 0.5, lastActivity: '2026-09-06T11:00:00.000Z',
+	};
+	stats.todaySessions = [
+		{ ...baseSession, title: 'CLI session', filePath: 'a.jsonl', editor: 'Copilot CLI (App)', models: ['claude-opus-5'] },
+		{ ...baseSession, title: 'VS Code session', filePath: 'b.jsonl', editor: 'VS Code', models: ['gpt-5.6-terra'] },
+		{ ...baseSession, title: 'HydraFusion session', filePath: 'c.jsonl', editor: 'VS Code', models: ['hydrafusion'] },
+	];
+	const harness = await bootWebview(stats);
+	const doc = harness.window.document;
+	const titles = () => [...doc.querySelectorAll('.sessions-table tbody tr .session-title-link')].map(a => a.textContent.replace(/^HydraFusion/, ''));
+
+	assert.deepEqual(titles(), ['CLI session', 'VS Code session', 'HydraFusion session'], 'all three sessions render before any filter is applied');
+
+	// Filter by editor: only the two VS Code sessions should remain.
+	const editorPill = [...doc.querySelectorAll('.session-filter-pill[data-filter-type="editor"]')].find(p => p.getAttribute('data-filter-value') === 'VS Code');
+	assert.ok(editorPill, 'expects a VS Code editor filter pill');
+	editorPill.click();
+	assert.deepEqual(titles(), ['VS Code session', 'HydraFusion session']);
+	// The click replaces the whole table container's HTML, so re-query for the live pill.
+	const editorPillAfterClick = [...doc.querySelectorAll('.session-filter-pill[data-filter-type="editor"]')].find(p => p.getAttribute('data-filter-value') === 'VS Code');
+	assert.equal(editorPillAfterClick?.getAttribute('aria-pressed'), 'true', 'an active pill should expose aria-pressed="true"');
+
+	// Combine with the HydraFusion quick filter: only the HydraFusion session should remain.
+	const hydraPill = doc.querySelector('.session-filter-pill-hydrafusion');
+	assert.ok(hydraPill, 'expects a HydraFusion quick-filter pill');
+	hydraPill.click();
+	assert.deepEqual(titles(), ['HydraFusion session']);
+
+	// Clearing filters restores every session.
+	const clearButton = doc.getElementById('sessions-filter-clear');
+	assert.ok(clearButton, 'expects a "Clear filters" button once a filter is active');
+	clearButton.click();
+	assert.deepEqual(titles(), ['CLI session', 'VS Code session', 'HydraFusion session']);
+	assert.equal(doc.getElementById('sessions-filter-clear'), null, 'the clear button disappears once no filters are active');
+});
+
 test('renders cloud agent session results', async () => {
 	const harness = await bootWebview(buildStats());
 
