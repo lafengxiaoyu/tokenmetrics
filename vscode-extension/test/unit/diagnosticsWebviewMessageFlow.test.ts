@@ -142,6 +142,17 @@ function bootWebviewUnsettled(initialData: Record<string, unknown> | null): Harn
 	};
 }
 
+/**
+ * Reads one Share Card stat tile ("Sessions", "Interactions", …) by its label. The value and the
+ * label live in sibling divs with no whitespace between them, so `harness.text()` would run them
+ * together ("1Sessions"); going through the DOM keeps the assertion readable.
+ */
+function shareStat(harness: Harness, label: string): string | undefined {
+	const tiles = Array.from(harness.window.document.querySelectorAll('#tab-share .share-stat')) as any[];
+	const tile = tiles.find((t) => t.querySelector('.share-stat-label')?.textContent === label);
+	return tile?.querySelector('.share-stat-value')?.textContent;
+}
+
 let syncBundle: string | undefined;
 function getSyncBundle(): string {
 	if (syncBundle === undefined) { throw new Error('Bundle not preloaded — call preloadBundle() first'); }
@@ -206,6 +217,76 @@ test('a githubAuth value from an early backendStorageInfoLoaded message also sur
 
 	const rendered = harness.text('#tab-github');
 	assert.ok(rendered?.includes('octocat'), `expected the authenticated GitHub user to render, got: ${rendered}`);
+});
+
+test('changing the Share Card period refreshes the card and keeps its controls interactive', async () => {
+	await preloadBundle();
+	const recent = new Date().toISOString();
+	const old = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+	const session = (file: string, lastInteraction: string) => ({
+		file,
+		size: 100,
+		modified: lastInteraction,
+		interactions: 2,
+		tokens: 1_000,
+		contextReferences: {},
+		firstInteraction: lastInteraction,
+		lastInteraction,
+		editorSource: 'VS Code',
+	});
+	const harness = bootWebviewUnsettled(buildInitialData({
+		detailedSessionFiles: [session('recent.json', recent), session('old.json', old)],
+	}));
+	await harness.settle();
+
+	const initialCard = harness.text('#tab-share');
+	assert.ok(
+		initialCard?.includes('Last 14 days · 1 editor detected'),
+		`expected the default 14-day subtitle, got: ${initialCard}`,
+	);
+	assert.equal(shareStat(harness, 'Sessions'), '1', 'only the recent session falls inside the default period');
+
+	const selector = harness.window.document.getElementById('share-card-period-select') as HTMLSelectElement;
+	selector.value = 'allTime';
+	selector.dispatchEvent(new harness.window.Event('change', { bubbles: true }));
+
+	const refreshedCard = harness.text('#tab-share');
+	assert.ok(
+		refreshedCard?.includes('All time · 1 editor detected'),
+		`expected the card to re-render for the new period, got: ${refreshedCard}`,
+	);
+	assert.equal(shareStat(harness, 'Sessions'), '2', 'the 60-day-old session joins the count once the period is All time');
+	assert.equal(harness.window.document.querySelectorAll('#tab-share').length, 1);
+	const refreshedSelector = harness.window.document.getElementById('share-card-period-select') as HTMLSelectElement;
+	assert.equal(refreshedSelector.value, 'allTime');
+
+	(harness.window.document.getElementById('btn-copy-share-summary') as HTMLButtonElement).click();
+	assert.equal(harness.posted.at(-1)?.command, 'copyText');
+	assert.match(harness.posted.at(-1)?.text, /2 sessions.*of all time/);
+});
+
+test('a backendStorageInfoLoaded message delivered before the layout renders is not discarded by the first paint', async () => {
+	// The host sends this message as early as possible (sendBackendStorageInfoEarly), racing the
+	// webview's own bootstrap() which awaits a dynamic import before building any DOM. Dispatching
+	// synchronously right after eval — before the pending import microtask resolves — reproduces
+	// that race deterministically: renderLayout() has not run yet, so no #tab-backend exists.
+	await preloadBundle();
+	const harness = bootWebviewUnsettled(buildInitialData({ backendStorageInfo: null }));
+
+	assert.equal(harness.window.document.getElementById('tab-backend'), null, 'layout must not exist yet');
+	harness.postSync({ command: 'backendStorageInfoLoaded', backendStorageInfo: configuredBackendStorageInfo(), githubAuth: { authenticated: true, username: 'octocat' } });
+
+	await harness.settle();
+
+	const rendered = harness.text('#tab-backend');
+	assert.ok(
+		rendered?.includes('Configured & Enabled'),
+		`the early message's data must survive into the first paint, got: ${rendered}`,
+	);
+	assert.ok(
+		!rendered?.includes('Loading backend storage status'),
+		'the first paint must not silently fall back to the placeholder once real data already arrived',
+	);
 });
 
 test('OTel Delta tab shows a detecting message while comparison data is still loading', async () => {
