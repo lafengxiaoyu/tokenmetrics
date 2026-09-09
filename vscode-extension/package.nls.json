@@ -95,6 +95,9 @@
   "config.backend.sharingServer.endpointUrl.description": "Base URL of the self-hosted sharing server (e.g. https://copilot-sharing.example.com). Authentication is handled automatically via your existing GitHub session — no API key needed.",
 
   "config.sampleDataDirectory.description": "Screenshot/demo mode: when set to a folder path, overrides all session file scanning and returns only .json/.jsonl files from this directory. Leave empty for normal operation.",
+  "config.monitoring.scope.description": "Choose which local AI session sources are monitored. GitHub Copilot is the focused default; all existing adapters remain available for compatibility.",
+  "config.monitoring.scope.enum.githubCopilot": "Monitor GitHub Copilot sessions only (VS Code, Copilot CLI, JetBrains, and Visual Studio)",
+  "config.monitoring.scope.enum.allSupported": "Monitor every session source supported by the extension",
   "config.suppressedUnknownTools.description": "List of tool names to suppress from the 'Unknown Tools Found' section in the Usage Analysis dashboard. Useful for tools you are testing that don't yet have friendly display names.",
   "config.curation.timeWindowDays.description": "Number of days to look back when determining which tools are unused for the Tool Curation analysis.",
   "config.curation.timeWindowDays.enum.7": "Look back 7 days when determining which tools are unused",

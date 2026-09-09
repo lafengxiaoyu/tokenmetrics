@@ -21,7 +21,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { IEcosystemAdapter } from './ecosystemAdapter';
+import type { IEcosystemAdapter, IDiscoverableEcosystem } from './ecosystemAdapter';
 import { isDiscoverable } from './ecosystemAdapter';
 import { normalizePathForDedup } from './workspaceHelpers';
 import type { WindsurfDataAccess } from './windsurf';
@@ -32,6 +32,8 @@ export interface SessionDiscoveryDeps {
 	error: (message: string, error?: any) => void;
 	ecosystems: IEcosystemAdapter[];
 	windsurf?: WindsurfDataAccess;
+	isAdapterEnabled?: (adapter: IEcosystemAdapter) => boolean;
+	isWindsurfEnabled?: () => boolean;
 	sampleDataDirectoryOverride?: () => string | undefined;
 }
 
@@ -59,6 +61,14 @@ export class SessionDiscovery {
 	clearCache(): void {
 		this._sessionFilesCache = null;
 		this._sessionFilesCacheTime = 0;
+	}
+
+	private isAdapterEnabled(adapter: IEcosystemAdapter): boolean {
+		return this.deps.isAdapterEnabled?.(adapter) ?? true;
+	}
+
+	private isWindsurfEnabled(): boolean {
+		return Boolean(this.deps.windsurf) && (this.deps.isWindsurfEnabled?.() ?? true);
 	}
 
 	/** Async replacement for fs.existsSync — does not block the event loop. */
@@ -95,7 +105,7 @@ export class SessionDiscovery {
 		const candidates: { path: string; exists: boolean; source: string }[] = [];
 
 		for (const eco of this.deps.ecosystems) {
-			if (!isDiscoverable(eco)) { continue; }
+			if (!isDiscoverable(eco) || !this.isAdapterEnabled(eco)) { continue; }
 			try {
 				const ecoPaths = eco.getCandidatePaths();
 				for (const cp of ecoPaths) {
@@ -105,7 +115,7 @@ export class SessionDiscovery {
 			} catch { /* ignore individual adapter errors */ }
 		}
 
-		if (this.deps.windsurf) {
+		if (this.deps.windsurf && this.isWindsurfEnabled()) {
 			const cascadeDir = this.deps.windsurf.getCascadeDir();
 			// Devin (Cognition Labs' desktop IDE) is a fork/rebrand of Windsurf that writes
 			// its Cascade trajectories into this exact same shared folder — there is no
@@ -195,7 +205,7 @@ export class SessionDiscovery {
 
 	/** Collect deduplicated Windsurf session files and add them to allDeduped. */
 	private async collectWindsurfFiles(seen: Set<string>, allDeduped: string[], onBatch?: (files: string[]) => void): Promise<void> {
-		if (!this.deps.windsurf) { return; }
+		if (!this.deps.windsurf || !this.isWindsurfEnabled()) { return; }
 		try {
 			const windsurfFiles = (await this.deps.windsurf.getWindsurfSessions()).map(session => session.file);
 			const batch = windsurfFiles.filter(f => {
@@ -228,7 +238,10 @@ export class SessionDiscovery {
 		const seen = new Set<string>();
 		const allDeduped: string[] = [];
 		const discoveryStartMs = Date.now();
-		const discoverableAdapters = this.deps.ecosystems.filter(isDiscoverable);
+		const discoverableAdapters = this.deps.ecosystems.filter(
+			(eco): eco is IEcosystemAdapter & IDiscoverableEcosystem =>
+				isDiscoverable(eco) && this.isAdapterEnabled(eco),
+		);
 		this.deps.log(`🔍 Searching for session files via ${discoverableAdapters.length} discoverable ecosystem adapter(s) (parallel)`);
 
 		let totalRaw = 0;

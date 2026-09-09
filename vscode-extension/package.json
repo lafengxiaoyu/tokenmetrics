@@ -406,6 +406,19 @@
           "default": "",
           "description": "%config.sampleDataDirectory.description%"
         },
+        "aiEngineeringFluency.monitoring.scope": {
+          "type": "string",
+          "enum": [
+            "githubCopilot",
+            "allSupported"
+          ],
+          "enumDescriptions": [
+            "%config.monitoring.scope.enum.githubCopilot%",
+            "%config.monitoring.scope.enum.allSupported%"
+          ],
+          "default": "githubCopilot",
+          "description": "%config.monitoring.scope.description%"
+        },
         "aiEngineeringFluency.suppressedUnknownTools": {
           "type": "array",
           "items": {

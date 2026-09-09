@@ -88,3 +88,18 @@ test('SessionDiscovery still reports adapter errors without blocking other batch
 	assert.ok(warnings.some(w => w.includes('broken')));
 	assert.equal(discovery.lastDiscoveryHadError, true);
 });
+
+test('SessionDiscovery skips adapters disabled by the monitoring scope', async () => {
+	const copilot = makeFakeAdapter('copilotchat', ['/fake/copilot/session.json'], 0);
+	const codex = makeFakeAdapter('codexcli', ['/fake/codex/session.jsonl'], 0);
+	const discovery = new SessionDiscovery({
+		log: () => {},
+		warn: () => {},
+		error: () => {},
+		ecosystems: [copilot, codex],
+		isAdapterEnabled: adapter => adapter.id === 'copilotchat',
+	});
+
+	const files = await discovery.getCopilotSessionFilesStreaming();
+	assert.deepEqual(files, ['/fake/copilot/session.json']);
+});

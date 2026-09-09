@@ -111,6 +111,22 @@ test('l10n: clipboard-failure keys resolve in English', () => {
 	}
 });
 
+test('l10n: monitoring scope keys resolve in English and zh-cn', () => {
+	assert.equal(
+		t('config.monitoring.scope.enum.githubCopilot'),
+		'Monitor GitHub Copilot sessions only (VS Code, Copilot CLI, JetBrains, and Visual Studio)',
+	);
+	mock.setLanguage('zh-cn');
+	try {
+		assert.equal(
+			t('config.monitoring.scope.enum.githubCopilot'),
+			'仅监控 GitHub Copilot 会话（VS Code、Copilot CLI、JetBrains 和 Visual Studio）',
+		);
+	} finally {
+		mock.setLanguage('en');
+	}
+});
+
 test('l10n: clipboard-failure keys resolve in zh-cn', () => {
 	mock.setLanguage('zh-cn');
 	try {

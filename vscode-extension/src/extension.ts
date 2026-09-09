@@ -173,6 +173,12 @@ import {
   type TtftSample,
 } from '../../src/tokenEstimation';
 import { SessionDiscovery } from '../../src/sessionDiscovery';
+import {
+	isAdapterEnabledForScope,
+	isWindsurfEnabledForScope,
+	normalizeMonitoringScope,
+	type MonitoringScope,
+} from '../../src/monitoringScope';
 
 // --- Cache ---
 import { CacheManager } from './cacheManager';
@@ -1496,8 +1502,17 @@ class CopilotTokenTracker implements vscode.Disposable {
 			error: (m, e) => this.error(m, e),
 			ecosystems: this.ecosystems,
 			windsurf: this.windsurf,
+			isAdapterEnabled: (adapter) => isAdapterEnabledForScope(adapter, this.getMonitoringScope()),
+			isWindsurfEnabled: () => isWindsurfEnabledForScope(this.getMonitoringScope()),
 			sampleDataDirectoryOverride: () => this.localRegressionSampleDataDir,
 		});
+	}
+
+	private getMonitoringScope(): MonitoringScope {
+		const configured = vscode.workspace
+			.getConfiguration('aiEngineeringFluency')
+			.get<unknown>('monitoring.scope');
+		return normalizeMonitoringScope(configured);
 	}
 
 	private loadInsightState(): void {
@@ -1853,6 +1868,9 @@ class CopilotTokenTracker implements vscode.Disposable {
 		context.subscriptions.push(
 			vscode.workspace.onDidChangeConfiguration(e => {
 				if (e.affectsConfiguration('aiEngineeringFluency.display')) { this.refreshOpenPanelsForSettingChange(); }
+				if (e.affectsConfiguration('aiEngineeringFluency.monitoring.scope')) {
+					void this.refreshAfterMonitoringScopeChange();
+				}
 				if (e.affectsConfiguration('aiEngineeringFluency.backend')) {
 					this.startBackendSyncAfterInitialAnalysis();
 					const backend = this.backend;
@@ -1870,6 +1888,17 @@ class CopilotTokenTracker implements vscode.Disposable {
 				}
 			})
 		);
+	}
+
+	private async refreshAfterMonitoringScopeChange(): Promise<void> {
+		this.sessionDiscovery.clearCache();
+		this._startupOpenCodeDbMisses.clear();
+		if (this._updateTokenStatsInFlight) {
+			await this._updateTokenStatsInFlight;
+			this.sessionDiscovery.clearCache();
+		}
+		await this.queueMissingOpenCodeDbSessionsFromCache();
+		await this.updateTokenStats(true);
 	}
 
 	private scheduleInitialUpdate(): void {
@@ -1898,6 +1927,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 	}
 
 	private async queueMissingOpenCodeDbSessionsFromCache(): Promise<void> {
+		if (this.getMonitoringScope() !== 'allSupported') { return; }
 		try {
 			const dbSessionIds = await this.openCode.discoverOpenCodeDbSessions();
 			if (dbSessionIds.length === 0) { return; }
