@@ -1,20 +1,19 @@
 {
-  "name": "ai-engineering-fluency",
+  "name": "tokenmetrics",
   "displayName": "%displayName%",
   "description": "%description%",
   "version": "0.17.3",
-  "publisher": "RobBos",
+  "publisher": "lafengxiaoyu",
   "icon": "assets/logo.png",
   "engines": {
     "vscode": "^1.136.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rajbos/ai-engineering-fluency"
+    "url": "https://github.com/lafengxiaoyu/ai-engineering-fluency"
   },
   "author": {
-    "name": "Rob Bos",
-    "email": "rob@example.com"
+    "name": "lafengxiaoyu"
   },
   "categories": [
     "Other"
@@ -36,165 +35,165 @@
   "contributes": {
     "commands": [
       {
-        "command": "aiEngineeringFluency.refresh",
+        "command": "tokenmetrics.refresh",
         "title": "%command.refresh.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showDetails",
+        "command": "tokenmetrics.showDetails",
         "title": "%command.showDetails.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showChart",
+        "command": "tokenmetrics.showChart",
         "title": "%command.showChart.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showUsageAnalysis",
+        "command": "tokenmetrics.showUsageAnalysis",
         "title": "%command.showUsageAnalysis.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.openMcpJson",
+        "command": "tokenmetrics.openMcpJson",
         "title": "%command.openMcpJson.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.generateDiagnosticReport",
+        "command": "tokenmetrics.generateDiagnosticReport",
         "title": "%command.generateDiagnosticReport.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showMaturity",
+        "command": "tokenmetrics.showMaturity",
         "title": "%command.showMaturity.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showFluencyLevelViewer",
+        "command": "tokenmetrics.showFluencyLevelViewer",
         "title": "%command.showFluencyLevelViewer.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.runLocalViewRegression",
+        "command": "tokenmetrics.runLocalViewRegression",
         "title": "%command.runLocalViewRegression.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.configureBackend",
+        "command": "tokenmetrics.configureBackend",
         "title": "%command.configureBackend.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.configureTeamServer",
+        "command": "tokenmetrics.configureTeamServer",
         "title": "%command.configureTeamServer.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.copyBackendConfig",
+        "command": "tokenmetrics.copyBackendConfig",
         "title": "%command.copyBackendConfig.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.exportCurrentView",
+        "command": "tokenmetrics.exportCurrentView",
         "title": "%command.exportCurrentView.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.setBackendSharedKey",
+        "command": "tokenmetrics.setBackendSharedKey",
         "title": "%command.setBackendSharedKey.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.rotateBackendSharedKey",
+        "command": "tokenmetrics.rotateBackendSharedKey",
         "title": "%command.rotateBackendSharedKey.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.clearBackendSharedKey",
+        "command": "tokenmetrics.clearBackendSharedKey",
         "title": "%command.clearBackendSharedKey.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.toggleBackendWorkspaceMachineNameSync",
+        "command": "tokenmetrics.toggleBackendWorkspaceMachineNameSync",
         "title": "%command.toggleBackendWorkspaceMachineNameSync.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.setSharingProfile",
+        "command": "tokenmetrics.setSharingProfile",
         "title": "%command.setSharingProfile.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.clearAzureSettings",
+        "command": "tokenmetrics.clearAzureSettings",
         "title": "%command.clearAzureSettings.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.clearCache",
+        "command": "tokenmetrics.clearCache",
         "title": "%command.clearCache.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.resetInsightsState",
+        "command": "tokenmetrics.resetInsightsState",
         "title": "%command.resetInsightsState.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showDashboard",
+        "command": "tokenmetrics.showDashboard",
         "title": "%command.showDashboard.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showEnvironmental",
+        "command": "tokenmetrics.showEnvironmental",
         "title": "%command.showEnvironmental.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showEfficiency",
+        "command": "tokenmetrics.showEfficiency",
         "title": "%command.showEfficiency.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.showWhatsNew",
+        "command": "tokenmetrics.showWhatsNew",
         "title": "%command.showWhatsNew.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.authenticateGitHub",
+        "command": "tokenmetrics.authenticateGitHub",
         "title": "%command.authenticateGitHub.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
-        "command": "aiEngineeringFluency.signOutGitHub",
+        "command": "tokenmetrics.signOutGitHub",
         "title": "%command.signOutGitHub.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       },
       {
         "command": "copilot-token-tracker.checkWindsurfStatus",
         "title": "%command.checkWindsurfStatus.title%",
-        "category": "AI Engineering Fluency"
+        "category": "Tokenmetrics"
       }
     ],
     "configuration": {
       "title": "%config.title%",
       "properties": {
-        "aiEngineeringFluency.display.compactNumbers": {
+        "tokenmetrics.display.compactNumbers": {
           "type": "boolean",
           "default": true,
           "description": "%config.display.compactNumbers.description%"
         },
-        "aiEngineeringFluency.display.use24HourTime": {
+        "tokenmetrics.display.use24HourTime": {
           "type": "boolean",
           "default": true,
           "description": "%config.display.use24HourTime.description%"
         },
-        "aiEngineeringFluency.display.hideAutomaticToolCalls": {
+        "tokenmetrics.display.hideAutomaticToolCalls": {
           "type": "boolean",
           "default": true,
           "description": "%config.display.hideAutomaticToolCalls.description%"
         },
-        "aiEngineeringFluency.display.statusBar.showTokens": {
+        "tokenmetrics.display.statusBar.showTokens": {
           "type": "string",
           "enum": [
             "none",
@@ -215,7 +214,7 @@
           "default": "both",
           "description": "%config.display.statusBar.showTokens.description%"
         },
-        "aiEngineeringFluency.display.statusBar.showCost": {
+        "tokenmetrics.display.statusBar.showCost": {
           "type": "string",
           "enum": [
             "none",
@@ -236,18 +235,18 @@
           "default": "none",
           "description": "%config.display.statusBar.showCost.description%"
         },
-        "aiEngineeringFluency.display.statusBar.monthlyBudget": {
+        "tokenmetrics.display.statusBar.monthlyBudget": {
           "type": "number",
           "default": 0,
           "minimum": 0,
           "description": "%config.display.statusBar.monthlyBudget.description%"
         },
-        "aiEngineeringFluency.backend.enabled": {
+        "tokenmetrics.backend.enabled": {
           "type": "boolean",
           "default": false,
           "description": "%config.backend.enabled.description%"
         },
-        "aiEngineeringFluency.backend.backend": {
+        "tokenmetrics.backend.backend": {
           "type": "string",
           "enum": [
             "storageTables",
@@ -260,7 +259,7 @@
           "default": "storageTables",
           "description": "%config.backend.backend.description%"
         },
-        "aiEngineeringFluency.backend.authMode": {
+        "tokenmetrics.backend.authMode": {
           "type": "string",
           "enum": [
             "entraId",
@@ -269,12 +268,12 @@
           "default": "entraId",
           "description": "%config.backend.authMode.description%"
         },
-        "aiEngineeringFluency.backend.datasetId": {
+        "tokenmetrics.backend.datasetId": {
           "type": "string",
           "default": "default",
           "description": "%config.backend.datasetId.description%"
         },
-        "aiEngineeringFluency.backend.sharingProfile": {
+        "tokenmetrics.backend.sharingProfile": {
           "type": "string",
           "enum": [
             "off",
@@ -293,27 +292,27 @@
           "default": "off",
           "description": "%config.backend.sharingProfile.description%"
         },
-        "aiEngineeringFluency.backend.userId": {
+        "tokenmetrics.backend.userId": {
           "type": "string",
           "default": "",
           "description": "%config.backend.userId.description%"
         },
-        "aiEngineeringFluency.backend.shareWithTeam": {
+        "tokenmetrics.backend.shareWithTeam": {
           "type": "boolean",
           "default": false,
           "description": "%config.backend.shareWithTeam.description%"
         },
-        "aiEngineeringFluency.backend.shareWorkspaceMachineNames": {
+        "tokenmetrics.backend.shareWorkspaceMachineNames": {
           "type": "boolean",
           "default": false,
           "description": "%config.backend.shareWorkspaceMachineNames.description%"
         },
-        "aiEngineeringFluency.backend.shareConsentAt": {
+        "tokenmetrics.backend.shareConsentAt": {
           "type": "string",
           "default": "",
           "description": "%config.backend.shareConsentAt.description%"
         },
-        "aiEngineeringFluency.backend.userIdentityMode": {
+        "tokenmetrics.backend.userIdentityMode": {
           "type": "string",
           "enum": [
             "pseudonymous",
@@ -323,7 +322,7 @@
           "default": "pseudonymous",
           "description": "%config.backend.userIdentityMode.description%"
         },
-        "aiEngineeringFluency.backend.userIdMode": {
+        "tokenmetrics.backend.userIdMode": {
           "type": "string",
           "enum": [
             "alias",
@@ -332,81 +331,81 @@
           "default": "alias",
           "description": "%config.backend.userIdMode.description%"
         },
-        "aiEngineeringFluency.backend.subscriptionId": {
+        "tokenmetrics.backend.subscriptionId": {
           "type": "string",
           "default": "",
           "description": "%config.backend.subscriptionId.description%"
         },
-        "aiEngineeringFluency.backend.resourceGroup": {
+        "tokenmetrics.backend.resourceGroup": {
           "type": "string",
           "default": "",
           "description": "%config.backend.resourceGroup.description%"
         },
-        "aiEngineeringFluency.backend.storageAccount": {
+        "tokenmetrics.backend.storageAccount": {
           "type": "string",
           "default": "",
           "description": "%config.backend.storageAccount.description%"
         },
-        "aiEngineeringFluency.backend.aggTable": {
+        "tokenmetrics.backend.aggTable": {
           "type": "string",
           "default": "usageAggDaily",
           "description": "%config.backend.aggTable.description%"
         },
-        "aiEngineeringFluency.backend.eventsTable": {
+        "tokenmetrics.backend.eventsTable": {
           "type": "string",
           "default": "usageEvents",
           "description": "%config.backend.eventsTable.description%"
         },
-        "aiEngineeringFluency.backend.lookbackDays": {
+        "tokenmetrics.backend.lookbackDays": {
           "type": "number",
           "default": 30,
           "minimum": 1,
           "maximum": 90,
           "description": "%config.backend.lookbackDays.description%"
         },
-        "aiEngineeringFluency.backend.includeMachineBreakdown": {
+        "tokenmetrics.backend.includeMachineBreakdown": {
           "type": "boolean",
           "default": false,
           "description": "%config.backend.includeMachineBreakdown.description%"
         },
-        "aiEngineeringFluency.backend.blobUploadEnabled": {
+        "tokenmetrics.backend.blobUploadEnabled": {
           "type": "boolean",
           "default": false,
           "description": "%config.backend.blobUploadEnabled.description%"
         },
-        "aiEngineeringFluency.backend.blobContainerName": {
+        "tokenmetrics.backend.blobContainerName": {
           "type": "string",
           "default": "copilot-session-logs",
           "description": "%config.backend.blobContainerName.description%"
         },
-        "aiEngineeringFluency.backend.blobUploadFrequencyHours": {
+        "tokenmetrics.backend.blobUploadFrequencyHours": {
           "type": "number",
           "default": 24,
           "minimum": 1,
           "maximum": 168,
           "description": "%config.backend.blobUploadFrequencyHours.description%"
         },
-        "aiEngineeringFluency.backend.blobCompressFiles": {
+        "tokenmetrics.backend.blobCompressFiles": {
           "type": "boolean",
           "default": true,
           "description": "%config.backend.blobCompressFiles.description%"
         },
-        "aiEngineeringFluency.backend.sharingServer.enabled": {
+        "tokenmetrics.backend.sharingServer.enabled": {
           "type": "boolean",
           "default": false,
           "description": "%config.backend.sharingServer.enabled.description%"
         },
-        "aiEngineeringFluency.backend.sharingServer.endpointUrl": {
+        "tokenmetrics.backend.sharingServer.endpointUrl": {
           "type": "string",
           "default": "",
           "description": "%config.backend.sharingServer.endpointUrl.description%"
         },
-        "aiEngineeringFluency.sampleDataDirectory": {
+        "tokenmetrics.sampleDataDirectory": {
           "type": "string",
           "default": "",
           "description": "%config.sampleDataDirectory.description%"
         },
-        "aiEngineeringFluency.monitoring.scope": {
+        "tokenmetrics.monitoring.scope": {
           "type": "string",
           "enum": [
             "githubCopilot",
@@ -419,7 +418,7 @@
           "default": "githubCopilot",
           "description": "%config.monitoring.scope.description%"
         },
-        "aiEngineeringFluency.suppressedUnknownTools": {
+        "tokenmetrics.suppressedUnknownTools": {
           "type": "array",
           "items": {
             "type": "string"
@@ -427,7 +426,7 @@
           "default": [],
           "description": "%config.suppressedUnknownTools.description%"
         },
-        "aiEngineeringFluency.curation.timeWindowDays": {
+        "tokenmetrics.curation.timeWindowDays": {
           "type": "number",
           "default": 30,
           "enum": [
@@ -442,7 +441,7 @@
           ],
           "description": "%config.curation.timeWindowDays.description%"
         },
-        "aiEngineeringFluency.toolFamilies": {
+        "tokenmetrics.toolFamilies": {
           "type": "array",
           "default": [],
           "description": "%config.toolFamilies.description%",
@@ -484,22 +483,22 @@
             }
           }
         },
-        "aiEngineeringFluency.insights.enabled": {
+        "tokenmetrics.insights.enabled": {
           "type": "boolean",
           "default": true,
           "description": "%config.insights.enabled.description%"
         },
-        "aiEngineeringFluency.insights.toastsEnabled": {
+        "tokenmetrics.insights.toastsEnabled": {
           "type": "boolean",
           "default": true,
           "description": "%config.insights.toastsEnabled.description%"
         },
-        "aiEngineeringFluency.whatsNew.notificationsEnabled": {
+        "tokenmetrics.whatsNew.notificationsEnabled": {
           "type": "boolean",
           "default": true,
           "description": "%config.whatsNew.notificationsEnabled.description%"
         },
-        "aiEngineeringFluency.insights.cadenceDays": {
+        "tokenmetrics.insights.cadenceDays": {
           "type": "number",
           "default": 2,
           "minimum": 1,

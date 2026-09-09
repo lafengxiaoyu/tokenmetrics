@@ -1,18 +1,24 @@
-# AI Engineering Fluency
+# Tokenmetrics
 
-(Previously known as the "GitHub Copilot Token Tracker")
-![AI Engineering Fluency](https://raw.githubusercontent.com/rajbos/ai-engineering-fluency/main/assets/AI%20Engineering%20Fluency%20-%20Transparent.png)
+Token usage and effectiveness monitoring for GitHub Copilot.
 
-Track your GitHub Copilot token usage and AI Fluency across VS Code, Visual Studio, and the command line. All data is read from local session logs — nothing leaves your machine unless you opt in to cloud sync.
+Tokenmetrics monitors sessions, token usage, context, tool calls, retries, corrections, and customization usage. All data is read from local session logs — nothing leaves your machine unless you opt in to cloud sync.
 
 [![Build](https://github.com/rajbos/ai-engineering-fluency/actions/workflows/build.yml/badge.svg)](https://github.com/rajbos/ai-engineering-fluency/actions/workflows/build.yml) [![Watch the Explainer Video](https://img.shields.io/badge/Watch-Explainer%20Video-FF0000?logo=youtube)](https://youtu.be/Odm3wNursCY)
 
-## Supported AI engineering tools
+## Default monitoring scope
+
+Tokenmetrics focuses on GitHub Copilot by default:
 
 - VS Code + GitHub Copilot (Stable, Insiders, Exploration)
-- VSCodium / Cursor
 - GitHub Copilot CLI
 - JetBrains IDEs + GitHub Copilot
+- Visual Studio + GitHub Copilot
+
+The inherited adapters below remain available through the `allSupported`
+compatibility scope while this fork evolves:
+
+- VSCodium / Cursor
 - Continue
 - OpenCode
 - Crush
@@ -22,7 +28,6 @@ Track your GitHub Copilot token usage and AI Fluency across VS Code, Visual Stud
 - Claude Desktop Cowork (Anthropic)
 - Mistral Vibe
 - Kiro IDE + Kiro CLI (AWS)
-- Visual Studio + GitHub Copilot
 
 <p align="left">
   <img src="assets/tool-logos/vscode.svg" alt="VS Code" title="VS Code" height="30" />&nbsp;

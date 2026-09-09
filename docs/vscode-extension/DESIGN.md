@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: AI Engineering Fluency (VS Code)
+name: Tokenmetrics (VS Code)
 description: >
   Native VS Code webview design system. Themable via VS Code CSS custom
   properties (light/dark), plus a distinct "Industrial Redux" mode that

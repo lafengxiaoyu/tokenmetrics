@@ -316,7 +316,7 @@ function attachMock(target: any): void {
 
 	target.extensions = target.extensions ?? {};
 	target.extensions.getExtension = target.extensions.getExtension ?? ((id: string) => {
-		if (id === 'RobBos.ai-engineering-fluency' || id === 'RobBos.copilot-token-tracker') {
+		if (id === 'lafengxiaoyu.tokenmetrics' || id === 'RobBos.ai-engineering-fluency' || id === 'RobBos.copilot-token-tracker') {
 			return { isActive: true, packageJSON: { version: '0.0.0-test' }, activate: async () => {} };
 		}
 		return state.extensions[id] as any;
@@ -324,13 +324,13 @@ function attachMock(target: any): void {
 
 	target.commands = target.commands ?? {};
 	target.commands.getCommands = target.commands.getCommands ?? (async (_filterInternal?: boolean) => [
-		'aiEngineeringFluency.refresh',
-		'aiEngineeringFluency.showDetails',
-		'aiEngineeringFluency.showChart',
-		'aiEngineeringFluency.showMaturity',
-		'aiEngineeringFluency.showFluencyLevelViewer',
-		'aiEngineeringFluency.runLocalViewRegression',
-		'aiEngineeringFluency.generateDiagnosticReport'
+		'tokenmetrics.refresh',
+		'tokenmetrics.showDetails',
+		'tokenmetrics.showChart',
+		'tokenmetrics.showMaturity',
+		'tokenmetrics.showFluencyLevelViewer',
+		'tokenmetrics.runLocalViewRegression',
+		'tokenmetrics.generateDiagnosticReport'
 	]);
 }
 

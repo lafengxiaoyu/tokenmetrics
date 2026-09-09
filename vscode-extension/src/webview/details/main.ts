@@ -297,7 +297,7 @@ style.textContent = styles;
 const container = el('div', 'container');
 const header = el('div', 'header');
 const headerLeft = el('div', 'header-left');
-headerLeft.append(el('div', 'title', 'AI Engineering Fluency'));
+headerLeft.append(el('div', 'title', 'Tokenmetrics'));
 const planBadge = buildPlanBadge(stats);
 if (planBadge) {
 headerLeft.append(planBadge);
@@ -1173,7 +1173,7 @@ function buildEmptyStateSection(): HTMLElement {
 const section = el('div', 'section');
 const inner = el('div', 'empty-state');
 
-const title = el('div', 'empty-state-title', '👋 Welcome to AI Engineering Fluency');
+const title = el('div', 'empty-state-title', '👋 Welcome to Tokenmetrics');
 
 const desc = el('p', 'empty-state-description',
 'This extension tracks AI token usage by reading session log files stored locally by supported tools. No token data has been found yet.'

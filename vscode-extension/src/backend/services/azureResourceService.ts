@@ -59,7 +59,7 @@ export class AzureResourceService {
 	 * Configure backend wizard (MVP: Storage Tables only).
 	 */
 	async configureBackendWizard(): Promise<void> {
-		const config = vscode.workspace.getConfiguration('aiEngineeringFluency');
+		const config = vscode.workspace.getConfiguration('tokenmetrics');
 		const credential = this.credentialService.createAzureCredential();
 
 		if (!await this._verifyAzureAuth(credential)) { return; }
@@ -535,7 +535,7 @@ export class AzureResourceService {
 	 * Set sharing profile command.
 	 */
 	async setSharingProfileCommand(): Promise<void> {
-		const config = vscode.workspace.getConfiguration('aiEngineeringFluency');
+		const config = vscode.workspace.getConfiguration('tokenmetrics');
 		const currentSettings = this.deps.getSettings();
 		const currentProfile = currentSettings.sharingProfile;
 

@@ -823,7 +823,7 @@ function renderShareCardTab(detailedFiles: SessionFileDetails[], isLoadingSessio
       <span id="share-card-period-selector"></span>
     </div>
     <div class="share-card">
-      <div class="share-badge">🤖 AI Engineering Fluency</div>
+      <div class="share-badge">🤖 Tokenmetrics</div>
       <div class="share-title">My AI Coding Toolbox</div>
       <div class="share-subtitle">${escapeHtml(PERIOD_LABELS[period])} · ${editors.length} editor${editors.length === 1 ? "" : "s"} detected</div>
       <div class="share-pills">${pills}</div>
@@ -3439,7 +3439,7 @@ function buildDiagReportTabHtml(escapedReport: string): string {
 <div class="info-box">
 <div class="info-box-title">📋 About This Report</div>
 <div>
-This diagnostic report contains information about your AI Engineering Fluency extension
+This diagnostic report contains information about your Tokenmetrics extension
 extension setup and usage statistics. </br> It does <strong>not</strong> include any of your
 code or conversation content. You can safely share this report when reporting issues.
 </div>

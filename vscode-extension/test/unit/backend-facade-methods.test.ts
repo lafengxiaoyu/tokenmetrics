@@ -209,7 +209,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('getConfigPanelState with sharedKey set returns sharedKeySet=true', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount', 'aiEngineeringFluency.backend.authMode': 'sharedKey' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount', 'tokenmetrics.backend.authMode': 'sharedKey' });
 		facade.credentialService.getStoredStorageSharedKey = async () => 'abc123';
 		const state = await facade.getConfigPanelState();
 		assert.equal(state.sharedKeySet, true);
@@ -218,7 +218,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('getConfigPanelState with entraId authMode shows Entra ID status', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.authMode': 'entraId' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.authMode': 'entraId' });
 		facade.credentialService.getStoredStorageSharedKey = async () => null;
 		const state = await facade.getConfigPanelState();
 		assert.ok(state.authStatus.includes('Entra ID'));
@@ -226,7 +226,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('getConfigPanelState with sharedKey authMode and no key shows missing', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.authMode': 'sharedKey', 'aiEngineeringFluency.backend.storageAccount': 'acct' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.authMode': 'sharedKey', 'tokenmetrics.backend.storageAccount': 'acct' });
 		facade.credentialService.getStoredStorageSharedKey = async () => null;
 		const state = await facade.getConfigPanelState();
 		assert.ok(state.authStatus.includes('missing'));
@@ -529,7 +529,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('clearBackendSharedKey with storageAccount confirms and clears', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		(vscode as any).__mock.setNextPick('Remove Key');
 		let cleared = false;
 		facade.credentialService.clearStoredStorageSharedKey = async () => { cleared = true; };
@@ -542,7 +542,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('clearBackendSharedKey cancelled by user does nothing', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		// No nextPick => user dismisses
 		let cleared = false;
 		facade.credentialService.clearStoredStorageSharedKey = async () => { cleared = true; };
@@ -552,7 +552,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('clearBackendSharedKey error path shows error message', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		(vscode as any).__mock.setNextPick('Remove Key');
 		facade.credentialService.clearStoredStorageSharedKey = async () => { throw new Error('boom'); };
 		await facade.clearBackendSharedKey();
@@ -563,7 +563,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('setBackendSharedKey with storageAccount prompts and stores key', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		// promptForAndStoreSharedKey calls showInputBox which returns undefined by default 
 		await facade.setBackendSharedKey();
 		// Since showInputBox returns undefined, no success message
@@ -572,7 +572,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('setBackendSharedKey error path shows error message', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		facade.promptForAndStoreSharedKey = async () => { throw new Error('fail!'); };
 		await facade.setBackendSharedKey();
 		assert.ok((vscode as any).__mock.state.lastErrorMessages.some(
@@ -582,7 +582,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('rotateBackendSharedKey error path shows error message', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		facade.promptForAndStoreSharedKey = async () => { throw new Error('rotation fail!'); };
 		await facade.rotateBackendSharedKey();
 		assert.ok((vscode as any).__mock.state.lastErrorMessages.some(
@@ -599,8 +599,8 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 		facade.dataPlaneService.listEntitiesForRange = async () => [{ model: 'gpt-4o', inputTokens: 50 }];
 		const settings = facade.getSettings();
 		(vscode as any).__mock.setConfig({
-			'aiEngineeringFluency.backend.storageAccount': 'acct1',
-			'aiEngineeringFluency.backend.aggTable': 'usageAggDaily',
+			'tokenmetrics.backend.storageAccount': 'acct1',
+			'tokenmetrics.backend.aggTable': 'usageAggDaily',
 		});
 		const result = await facade.getAggEntitiesForRange(facade.getSettings(), '2025-01-01', '2025-01-07');
 		assert.ok(Array.isArray(result));
@@ -627,8 +627,8 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 			return { deletedCount: 3, errors: [] };
 		};
 		(vscode as any).__mock.setConfig({
-			'aiEngineeringFluency.backend.storageAccount': 'acct1',
-			'aiEngineeringFluency.backend.aggTable': 'usageAggDaily',
+			'tokenmetrics.backend.storageAccount': 'acct1',
+			'tokenmetrics.backend.aggTable': 'usageAggDaily',
 		});
 		const result = await facade.deleteUserDataset('user1', 'ds1');
 		assert.ok(deleteCalled);
@@ -654,7 +654,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('setBackendSharedKey success shows info message', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		facade.promptForAndStoreSharedKey = async () => true;
 		await facade.setBackendSharedKey();
 		assert.ok((vscode as any).__mock.state.lastInfoMessages.some(
@@ -664,7 +664,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('rotateBackendSharedKey success shows info message', async () => {
 		const facade: any = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		facade.promptForAndStoreSharedKey = async () => true;
 		await facade.rotateBackendSharedKey();
 		assert.ok((vscode as any).__mock.state.lastInfoMessages.some(
@@ -674,7 +674,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 
 	test('toggleBackendWorkspaceMachineNameSync includes team sharing suffix', async () => {
 		const facade = createFacade();
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.shareWithTeam': true });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.shareWithTeam': true });
 		await facade.toggleBackendWorkspaceMachineNameSync();
 		// When shareWithTeam is true, the suffix about team sharing should NOT be appended
 		const msgs = (vscode as any).__mock.state.lastInfoMessages;
@@ -687,7 +687,7 @@ describe('BackendFacade private methods via casting', { concurrency: false }, ()
 		let clearedKey = false;
 		facade.credentialService.clearStoredStorageSharedKey = async () => { clearedKey = true; };
 		facade.credentialService.getStoredStorageSharedKey = async () => undefined;
-		(vscode as any).__mock.setConfig({ 'aiEngineeringFluency.backend.storageAccount': 'myaccount' });
+		(vscode as any).__mock.setConfig({ 'tokenmetrics.backend.storageAccount': 'myaccount' });
 		// Mock showWarningMessage to return "Clear Settings"
 		(vscode as any).__mock.setNextPick('Clear Settings');
 		const state = await facade.clearAzureSettings();

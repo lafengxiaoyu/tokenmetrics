@@ -24,7 +24,7 @@ test('l10n: VS Code bundle args are passed through', () => {
 test('l10n: resolves English from the inlined package.nls.json when VS Code returns the raw key', () => {
 	const value = t('statusBar.loadingText');
 	assert.notEqual(value, 'statusBar.loadingText');
-	assert.ok(value.includes('AI Fluency'), `expected English text, got: ${value}`);
+	assert.ok(value.includes('Tokenmetrics'), `expected English text, got: ${value}`);
 });
 
 test('l10n: inlined fallback formats {0} placeholders', () => {
@@ -67,7 +67,7 @@ test('l10n: unknown key returns the key itself and warns once', () => {
 // (PR #1876 follow-up) — guards against raw keys resurfacing in the UI.
 test('l10n: dialog button and insights status bar keys resolve in English', () => {
 	const expected: Record<string, string> = {
-		'statusBar.nameInsights': 'AI Engineering Fluency — Insights',
+		'statusBar.nameInsights': 'Tokenmetrics — Insights',
 		'button.openSettings': 'Open Settings',
 		'button.openUsageAnalysis': 'Open Usage Analysis',
 		'button.openInsightsTab': 'Open Insights tab',
@@ -83,7 +83,7 @@ test('l10n: dialog button and insights status bar keys resolve in zh-cn', () => 
 	mock.setLanguage('zh-cn');
 	try {
 		const expected: Record<string, string> = {
-			'statusBar.nameInsights': 'AI 工程熟练度 —— 洞察',
+			'statusBar.nameInsights': 'Tokenmetrics —— 洞察',
 			'button.openSettings': '打开设置',
 			'button.openUsageAnalysis': '打开使用分析',
 			'button.openInsightsTab': '打开洞察标签页',

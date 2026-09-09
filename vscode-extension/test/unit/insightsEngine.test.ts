@@ -488,7 +488,7 @@ test('model-edit-retries: action opens the model efficiency section', () => {
 	const ctx = makeRetryCtx({ 'gpt-4o': effCounters(10, 20) });
 	const results = evaluateInsights(ctx, {}, 7, null);
 	const insight = results.find(i => i.id === RETRIES_ID);
-	assert.equal(insight!.actionCommand, 'aiEngineeringFluency.openModelEfficiency');
+	assert.equal(insight!.actionCommand, 'tokenmetrics.openModelEfficiency');
 });
 
 // ---------------------------------------------------------------------------
@@ -659,7 +659,7 @@ test('mode-diversity-low: has an action button opening the Interaction Modes vie
 	const insight = results.find(i => i.id === MODE_DIVERSITY_ID);
 	assert.ok(insight);
 	assert.equal(insight!.actionLabel, 'View Interaction Modes');
-	assert.equal(insight!.actionCommand, 'aiEngineeringFluency.openActivityTab');
+	assert.equal(insight!.actionCommand, 'tokenmetrics.openActivityTab');
 });
 
 test('mode-diversity-low: does NOT fire for CLI-heavy users (CLI counts as agentic usage)', () => {
@@ -732,7 +732,7 @@ test('corrections-user-pushback: fires at >= 3 user corrections', () => {
 	assert.ok(insight, 'should fire at the threshold');
 	assert.match(insight.body, /3 times/);
 	assert.match(insight.body, /across 2 sessions/);
-	assert.equal(insight.actionCommand, 'aiEngineeringFluency.openCorrectionsTab');
+	assert.equal(insight.actionCommand, 'tokenmetrics.openCorrectionsTab');
 });
 
 test('corrections-user-pushback: does NOT fire below the threshold or without data', () => {
@@ -771,7 +771,7 @@ test('corrections-user-escalation: fires at >= 2 escalated corrections', () => {
 	assert.ok(insight, 'should fire at the threshold');
 	assert.match(insight.body, /2 corrections/);
 	assert.match(insight.body, /across 1 session/);
-	assert.equal(insight.actionCommand, 'aiEngineeringFluency.openCorrectionsTab');
+	assert.equal(insight.actionCommand, 'tokenmetrics.openCorrectionsTab');
 });
 
 test('corrections-user-escalation: does NOT fire below the threshold or without data', () => {
@@ -807,7 +807,7 @@ test('repeated-task-skill-candidate: fires when a cluster reaches 3 sessions', (
 	assert.ok(insight, 'should fire at sessionCount = 3');
 	assert.match(insight.body, /3 sessions/);
 	assert.match(insight.body, /run the tests/);
-	assert.equal(insight.actionCommand, 'aiEngineeringFluency.openToolsTab');
+	assert.equal(insight.actionCommand, 'tokenmetrics.openToolsTab');
 });
 
 test('insight navigation actions target their destination tabs and sections', () => {
@@ -821,19 +821,19 @@ test('insight navigation actions target their destination tabs and sections', ()
 	}];
 	assert.equal(
 		evaluateInsights(missingInstructions, {}, 7, null).find(i => i.id === 'missing-instructions')?.actionCommand,
-		'aiEngineeringFluency.openHealthTab',
+		'tokenmetrics.openHealthTab',
 	);
 
 	const corrections = makeCtx();
 	corrections.last30Days.corrections = { ...emptyCorrections(), userCorrections: 3, sessionsWithMoments: 2 };
 	const pushbackInsight = evaluateInsights(corrections, {}, 7, null).find(i => i.id === 'corrections-user-pushback');
-	assert.equal(pushbackInsight?.actionCommand, 'aiEngineeringFluency.openCorrectionsTab');
-	assert.equal(pushbackInsight?.secondaryActionCommand, 'aiEngineeringFluency.askCopilotAboutCorrections');
+	assert.equal(pushbackInsight?.actionCommand, 'tokenmetrics.openCorrectionsTab');
+	assert.equal(pushbackInsight?.secondaryActionCommand, 'tokenmetrics.askCopilotAboutCorrections');
 
 	corrections.last30Days.corrections = { ...emptyCorrections(), toolErrors: 5, sessionsWithMoments: 2 };
 	assert.equal(
 		evaluateInsights(corrections, {}, 7, null).find(i => i.id === 'corrections-tool-errors')?.actionCommand,
-		'aiEngineeringFluency.openCorrectionsTab',
+		'tokenmetrics.openCorrectionsTab',
 	);
 });
 

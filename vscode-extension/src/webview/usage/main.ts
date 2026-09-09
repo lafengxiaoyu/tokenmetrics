@@ -3900,7 +3900,7 @@ function buildUsageRootHtml(
 			<div class="header">
 				<div class="header-left">
 					<span class="header-icon">📊</span>
-					<span class="header-title">Usage Analysis</span>
+					<span class="header-title">Tokenmetrics</span>
 				</div>
 				<div class="button-row">
 				${navButtonsHtml('btn-usage', !!stats.backendConfigured)}

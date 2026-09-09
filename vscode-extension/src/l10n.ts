@@ -69,7 +69,7 @@ export function t(key: string, ...args: Array<string | number | boolean>): strin
 	if (template === undefined) {
 		if (!missingKeyWarnings.has(key)) {
 			missingKeyWarnings.add(key);
-			console.warn(`[ai-engineering-fluency] No localization found for key "${key}" — add it to package.nls.json.`);
+			console.warn(`[tokenmetrics] No localization found for key "${key}" — add it to package.nls.json.`);
 		}
 		return key;
 	}

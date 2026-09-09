@@ -19,7 +19,7 @@ show its supporting evidence instead of presenting a hidden score as truth.
 The default monitoring scope is `githubCopilot`. It discovers local GitHub
 Copilot sessions from VS Code-family editors, Copilot CLI, JetBrains IDEs, and
 Visual Studio. Other existing adapters remain in the codebase and can be
-enabled with `aiEngineeringFluency.monitoring.scope = allSupported` while the
+enabled with `tokenmetrics.monitoring.scope = allSupported` while the
 fork is being developed.
 
 This staged approach keeps proven parsing behavior available without exposing

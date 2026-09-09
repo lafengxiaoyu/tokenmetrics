@@ -426,7 +426,7 @@ function buildCategoryCard(
 function buildShareSectionHtml(): string {
   return `
   <div class="share-section">
-    <div class="share-header"><span class="share-icon">📢</span><span class="share-title">Share Your AI Engineering Fluency Score</span></div>
+    <div class="share-header"><span class="share-icon">📢</span><span class="share-title">Share Your Tokenmetrics Score</span></div>
     <div class="share-description">Share your progress with the community and inspire others to level up their AI engineering skills!</div>
     <div class="share-buttons">
       <button id="btn-share-linkedin" class="share-btn share-btn-linkedin"><span class="share-btn-icon">💼</span><span>Share on LinkedIn</span></button>
@@ -462,7 +462,7 @@ function buildMaturityRootHtml(
       <div class="header">
         <div class="header-left">
           <span class="header-icon">🎯</span>
-          <span class="header-title">AI Engineering Fluency Score</span>
+          <span class="header-title">Tokenmetrics Score</span>
         </div>
         <div class="button-row">
           ${navButtonsHtml('btn-maturity', !!data.backendConfigured)}
@@ -480,7 +480,7 @@ function buildMaturityRootHtml(
         </div>
       </div>
       <div class="stage-banner">
-        <div class="stage-banner-label">Overall AI Engineering Fluency</div>
+        <div class="stage-banner-label">Overall Tokenmetrics</div>
         <div class="stage-banner-title stage-${data.overallStage}">${escapeHtml(data.overallLabel)}</div>
         <div class="stage-banner-subtitle">${escapeHtml(STAGE_DESCRIPTIONS[data.overallStage] || '')}</div>
       </div>
@@ -563,7 +563,7 @@ async function handleScreenshotExport(command: 'exportPdf' | 'exportPptx'): Prom
 
   const titleEl = document.createElement('div');
   titleEl.style.cssText = 'text-align:center;margin-bottom:20px;';
-  setHtml(titleEl, `<div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">AI Engineering Fluency Score</div><div style="font-size:16px;color:#b8b8c8;">Report &middot; ${new Date().toLocaleDateString()}</div>`);
+  setHtml(titleEl, `<div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;">Tokenmetrics Score</div><div style="font-size:16px;color:#b8b8c8;">Report &middot; ${new Date().toLocaleDateString()}</div>`);
   coverContainer.appendChild(titleEl);
 
   if (stageBanner) { coverContainer.appendChild(stageBanner.cloneNode(true)); }
@@ -611,12 +611,12 @@ async function handleShareToSocial(platform: 'linkedin' | 'bluesky' | 'mastodon'
 
   setHtml(card, `
     <div style="text-align:center;color:#fff;padding:48px;">
-      <div style="font-size:28px;margin-bottom:12px;">🎯 AI Engineering Fluency Score</div>
-      <div style="font-size:14px;color:#b8b8c8;margin-bottom:32px;text-transform:uppercase;letter-spacing:2px;">Overall AI Engineering Fluency</div>
+      <div style="font-size:28px;margin-bottom:12px;">🎯 Tokenmetrics Score</div>
+      <div style="font-size:14px;color:#b8b8c8;margin-bottom:32px;text-transform:uppercase;letter-spacing:2px;">Overall Tokenmetrics</div>
       <div style="font-size:56px;font-weight:800;color:${stageColor};margin-bottom:12px;">${escapeHtml(data.overallLabel)}</div>
       <div style="font-size:20px;color:#b8b8c8;margin-bottom:40px;">${escapeHtml(STAGE_DESCRIPTIONS[data.overallStage] || '')}</div>
       <div style="font-size:22px;font-weight:700;color:#58a6ff;margin-bottom:8px;">#AIEngineeringFluency</div>
-      <div style="font-size:14px;color:#7a7a8a;">Track your AI usage with AI Engineering Fluency</div>
+      <div style="font-size:14px;color:#7a7a8a;">Track your AI usage with Tokenmetrics</div>
     </div>
   `);
 

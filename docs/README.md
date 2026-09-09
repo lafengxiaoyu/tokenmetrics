@@ -9,7 +9,7 @@ tags: [documentation, index]
 
 # Documentation
 
-This directory contains all documentation for the GitHub Copilot Token Tracker / AI Engineering Fluency project.
+This directory contains all documentation for the GitHub Copilot Token Tracker / Tokenmetrics project.
 
 ## Core Reference
 

@@ -1,14 +1,10 @@
-# AI Engineering Fluency — VS Code Extension
+# Tokenmetrics — VS Code Extension
 
-![AI Engineering Fluency](../../assets/AI%20Engineering%20Fluency%20-%20Transparent.png)
-
-Track your AI Engineering Fluency — daily and monthly token usage, cost estimates, and productivity insights directly inside VS Code. Reads local session logs and displays today's and monthly usage in the status bar, with rich detail views and optional cloud sync.
+Monitor GitHub Copilot sessions, token usage, context, tools, retries, and effectiveness insights directly inside VS Code.
 
 ## Install
 
-[![VS Code Marketplace](https://badgen.net/vs-marketplace/v/RobBos.ai-engineering-fluency)](https://marketplace.visualstudio.com/items?itemName=RobBos.ai-engineering-fluency)
-
-Search for **"AI Engineering Fluency"** in the VS Code Extensions panel, or install via the Marketplace link above.
+Tokenmetrics is currently installed from a locally built VSIX while the fork is under development.
 
 ---
 
@@ -37,7 +33,7 @@ Search for **"AI Engineering Fluency"** in the VS Code Extensions panel, or inst
   - Team collaboration features
   - Advanced analytics and insights
 
-To authenticate, open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search for "AI Engineering Fluency: Authenticate with GitHub", or access it through the Diagnostic Report's **GitHub Auth** tab.
+To authenticate, open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search for "Tokenmetrics: Authenticate with GitHub", or access it through the Diagnostic Report's **GitHub Auth** tab.
 
 ### Cloud Backend (Opt-in)
 
@@ -185,7 +181,7 @@ The extension includes a comprehensive usage analysis dashboard that helps you u
 
 1. Click the status bar item to open the details panel
 2. Click the **"📊 Usage Analysis"** button
-3. Or use the Command Palette: `AI Engineering Fluency: Show Usage Analysis Dashboard`
+3. Or use the Command Palette: `Tokenmetrics: Show Usage Analysis Dashboard`
 
 For detailed information about the metrics, see [Usage Analysis Documentation](../USAGE-ANALYSIS.md).
 
@@ -212,7 +208,7 @@ Generate a diagnostic report to help troubleshoot issues. The report includes:
 
 Alternatively, use the Command Palette:
 - Press `Ctrl+Shift+P` / `Cmd+Shift+P`
-- Type `AI Engineering Fluency: Generate Diagnostic Report`
+- Type `Tokenmetrics: Generate Diagnostic Report`
 
 > **Note**: The diagnostic report does not include any of your code or conversation content. It only includes file locations, sizes, and aggregated statistics.
 
@@ -232,9 +228,9 @@ The extension can also upload your local session log files to Azure Blob Storage
 To enable log file uploads:
 ```json
 {
-  "aiEngineeringFluency.backend.blobUploadEnabled": true,
-  "aiEngineeringFluency.backend.blobContainerName": "copilot-session-logs",
-  "aiEngineeringFluency.backend.blobUploadFrequencyHours": 24
+  "tokenmetrics.backend.blobUploadEnabled": true,
+  "tokenmetrics.backend.blobContainerName": "copilot-session-logs",
+  "tokenmetrics.backend.blobUploadFrequencyHours": 24
 }
 ```
 
@@ -267,21 +263,21 @@ To share usage with team members, configure all participants to point at the sam
 
 ### Commands
 
-- `AI Engineering Fluency: Configure Backend` — guided setup wizard for Azure resources and settings
-- `AI Engineering Fluency: Copy Backend Config` — copies shareable config without secrets
-- `AI Engineering Fluency: Export Current View` — exports filtered backend/local view as JSON
+- `Tokenmetrics: Configure Backend` — guided setup wizard for Azure resources and settings
+- `Tokenmetrics: Copy Backend Config` — copies shareable config without secrets
+- `Tokenmetrics: Export Current View` — exports filtered backend/local view as JSON
 
 Shared Key management (only if using shared-key auth):
-- `AI Engineering Fluency: Set Backend Shared Key`
-- `AI Engineering Fluency: Rotate Backend Shared Key`
-- `AI Engineering Fluency: Clear Backend Shared Key`
+- `Tokenmetrics: Set Backend Shared Key`
+- `Tokenmetrics: Rotate Backend Shared Key`
+- `Tokenmetrics: Clear Backend Shared Key`
 
 Other:
-- `AI Engineering Fluency: Ask About Usage`
+- `Tokenmetrics: Ask About Usage`
 
 ### Backend Settings Configurator
 
-Use **AI Engineering Fluency: Configure Backend** to open the settings panel with five sections: Overview, Sharing, Azure, Advanced, and Review & Apply.
+Use **Tokenmetrics: Configure Backend** to open the settings panel with five sections: Overview, Sharing, Azure, Advanced, and Review & Apply.
 
 **Privacy profiles** (Sharing section):
 - **Off** – All data stays local; nothing syncs to Azure
@@ -291,7 +287,7 @@ Use **AI Engineering Fluency: Configure Backend** to open the settings panel wit
 - **Team Identified** – Team alias or Entra object ID included; full workspace names available
 
 **Guided setup workflow:**
-1. Run **AI Engineering Fluency: Configure Backend** command
+1. Run **Tokenmetrics: Configure Backend** command
 2. Navigate to Sharing section to choose your privacy profile
 3. Go to Azure section, enable backend, and use **Open configure walkthrough** to provision Azure resources
 4. Advanced section sets dataset ID and lookback days (7/30/90)

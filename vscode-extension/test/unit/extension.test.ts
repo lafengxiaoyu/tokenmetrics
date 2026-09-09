@@ -8,12 +8,12 @@ test('Sample test', () => {
 });
 
 test('Extension should be present', () => {
-	const extension = vscode.extensions.getExtension('RobBos.ai-engineering-fluency');
+	const extension = vscode.extensions.getExtension('lafengxiaoyu.tokenmetrics');
 	assert.ok(extension, 'Extension should be installed');
 });
 
 test('Commands should be registered', async () => {
-	const extension = vscode.extensions.getExtension('RobBos.ai-engineering-fluency');
+	const extension = vscode.extensions.getExtension('lafengxiaoyu.tokenmetrics');
 	if (extension && !extension.isActive) {
 		await extension.activate();
 	}
@@ -21,13 +21,13 @@ test('Commands should be registered', async () => {
 	const commands = await vscode.commands.getCommands(true);
 	
 	const expectedCommands = [
-		'aiEngineeringFluency.refresh',
-		'aiEngineeringFluency.showDetails',
-		'aiEngineeringFluency.showChart',
-		'aiEngineeringFluency.showMaturity',
-		'aiEngineeringFluency.showFluencyLevelViewer',
-		'aiEngineeringFluency.runLocalViewRegression',
-		'aiEngineeringFluency.generateDiagnosticReport'
+		'tokenmetrics.refresh',
+		'tokenmetrics.showDetails',
+		'tokenmetrics.showChart',
+		'tokenmetrics.showMaturity',
+		'tokenmetrics.showFluencyLevelViewer',
+		'tokenmetrics.runLocalViewRegression',
+		'tokenmetrics.generateDiagnosticReport'
 	];
 
 	for (const expectedCommand of expectedCommands) {

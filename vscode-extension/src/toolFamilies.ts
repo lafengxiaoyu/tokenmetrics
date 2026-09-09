@@ -92,7 +92,7 @@ export function mergeToolFamilies(overrides: ToolFamily[]): ToolFamily[] {
 /** Read and merge tool families from VS Code settings. Falls back to defaults on error. */
 export function getToolFamilies(): ToolFamily[] {
 	try {
-		const raw = vscode.workspace.getConfiguration('aiEngineeringFluency').get<ToolFamily[]>('toolFamilies', []);
+		const raw = vscode.workspace.getConfiguration('tokenmetrics').get<ToolFamily[]>('toolFamilies', []);
 		return mergeToolFamilies(Array.isArray(raw) ? raw : []);
 	} catch {
 		return [...DEFAULT_TOOL_FAMILIES];

@@ -244,7 +244,7 @@ export function formatLocalViewRegressionReport(
   const skipped = results.filter((result) => result.status === 'skip').length;
 
   const lines = [
-    'AI Engineering Fluency — Local view regression',
+    'Tokenmetrics — Local view regression',
     `Passed: ${passed}  Failed: ${failed}  Skipped: ${skipped}`,
     '',
   ];

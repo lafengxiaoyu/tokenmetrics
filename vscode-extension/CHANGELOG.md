@@ -5,7 +5,9 @@ All notable changes to the VS Code extension will be documented in this file.
 ## [Unreleased]
 
 ### Features
-- New "What's New" view (command palette: *AI Engineering Fluency: What's New*) listing the last 5 releases in plain English, plus a one-at-a-time notification that points out a new view/tab/section after an update — at most one a day, at most 3 per release, and never one you already opened yourself. Turn the notifications off with `aiEngineeringFluency.whatsNew.notificationsEnabled`; see [docs/features/WHATS-NEW.md](../docs/features/WHATS-NEW.md)
+- Rebrand the fork as Tokenmetrics with the independent extension ID `lafengxiaoyu.tokenmetrics` and `tokenmetrics.*` command/configuration namespace
+- Keep primary navigation in one editor slot by closing the previous primary panel before opening the selected view
+- New "What's New" view (command palette: *Tokenmetrics: What's New*) listing the last 5 releases in plain English, plus a one-at-a-time notification that points out a new view/tab/section after an update — at most one a day, at most 3 per release, and never one you already opened yourself. Turn the notifications off with `tokenmetrics.whatsNew.notificationsEnabled`; see [docs/features/WHATS-NEW.md](../docs/features/WHATS-NEW.md)
 - New "Research > TTFT" tab in the Diagnostic Report: time-to-first-token averages by day/week/month with a trendline per model, read from VS Code Copilot Chat's own debug log (`attrs.ttft`) — no setup required, see [docs/features/TTFT-TRENDS.md](../docs/features/TTFT-TRENDS.md)
 - New "Skill Suggestions" section in the Usage Analysis Tools & Integrations tab: clusters the first prompt of each session to find tasks you keep prompting for manually (candidates for a reusable skill or prompt file), plus a new insight when a task repeats across 3+ sessions
 - New "Corrections" tab in the Usage Analysis view: surfaces moments where the agent corrected itself after an error (failed tool calls, immediate edit retries, verbal self-corrections) or you had to correct the agent, grouped per repository over its 25 most recent sessions with detected moments

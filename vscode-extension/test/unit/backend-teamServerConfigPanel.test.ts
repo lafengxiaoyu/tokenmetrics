@@ -100,7 +100,7 @@ test('TeamServerConfigPanel - show creates new panel when none exists', async ()
 	// Should create new panel
 	assert.equal(createWebviewCalls.length, 1, 'Should create new panel when none exists');
 	assert.equal(createWebviewCalls[0].viewType, 'copilotTeamServerConfig');
-	assert.equal(createWebviewCalls[0].title, 'AI Engineering Fluency: Configure Team Server');
+	assert.equal(createWebviewCalls[0].title, 'Tokenmetrics: Configure Team Server');
 	
 	// Clean up
 	TeamServerConfigPanel.current?.dispose();

@@ -209,7 +209,7 @@ export class SyncService {
 				'Configure Backend'
 			).then(choice => {
 				if (choice === 'Configure Backend') {
-					vscode.commands.executeCommand('aiEngineeringFluency.configureBackend');
+					vscode.commands.executeCommand('tokenmetrics.configureBackend');
 				}
 			});
 			this.stopTimer();
@@ -889,7 +889,7 @@ return this.buildDayModelInteractionsFromJson(content, fileMtimeMs, startMs, ses
 				if (!validation.valid) {
 					this.deps.logger.warn(`⚠ Backend sync: User identity validation failed. Data will be synced WITHOUT user dimension.`);
 					this.deps.logger.warn(`   Reason: ${validation.error}`);
-					this.deps.logger.warn(`   Fix: Update "AI Engineering Fluency: Backend User Id" in settings to a valid team alias.`);
+					this.deps.logger.warn(`   Fix: Update "Tokenmetrics: Backend User Id" in settings to a valid team alias.`);
 				}
 			} else {
 				this.deps.logger.warn(`⚠ Backend sync: Could not resolve user identity for mode ${settings.userIdentityMode}. Data will be synced WITHOUT user dimension.`);

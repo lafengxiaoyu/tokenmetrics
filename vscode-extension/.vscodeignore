@@ -34,6 +34,11 @@ publish.ps1
 **/*.test.ts
 **/*.test.js
 **/*.map
+contract-fixture-*/**
+ctt-*/**
+pi-discover-*/**
+pi-test-*/**
+cliapp-split-*/**
 
 # Large documentation schema files (6MB+)
 docs/logFilesSchema

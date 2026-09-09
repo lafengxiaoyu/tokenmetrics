@@ -13,7 +13,7 @@ const HOOK_DEFINITIONS: Record<string, HookDefinition> = {
 	'missing-instructions': {
 		event: 'SessionStart',
 		bashScript: `#!/bin/bash
-# AI Engineering Fluency — Session Reminder: missing-instructions
+# Tokenmetrics — Session Reminder: missing-instructions
 INPUT=$(cat)
 CWD=$(echo "$INPUT" | grep -o '"cwd":"[^"]*"' | cut -d'"' -f4)
 WORKSPACE_HASH=$(echo "$CWD" | cksum | cut -d' ' -f1)
@@ -31,7 +31,7 @@ AGE=$(( (NOW - LAST) / 86400 ))
 mkdir -p "$STATE_DIR" && echo "$NOW" > "$STATE_FILE"
 printf '{"systemMessage":"💡 No .github/copilot-instructions.md found. Add one to give Copilot project-specific context and improve AI response quality."}'
 `,
-		ps1Script: `# AI Engineering Fluency — Session Reminder: missing-instructions
+		ps1Script: `# Tokenmetrics — Session Reminder: missing-instructions
 $inputData = [Console]::In.ReadToEnd()
 $data = $inputData | ConvertFrom-Json -ErrorAction SilentlyContinue
 if ($data.cwd) { $cwd = $data.cwd } else { $cwd = "" }
@@ -55,7 +55,7 @@ Write-Output '{"systemMessage":"💡 No .github/copilot-instructions.md found. A
 	'no-context-refs': {
 		event: 'UserPromptSubmit',
 		bashScript: `#!/bin/bash
-# AI Engineering Fluency — Session Reminder: no-context-refs
+# Tokenmetrics — Session Reminder: no-context-refs
 INPUT=$(cat)
 CWD=$(echo "$INPUT" | grep -o '"cwd":"[^"]*"' | cut -d'"' -f4)
 WORKSPACE_HASH=$(echo "$CWD" | cksum | cut -d' ' -f1)
@@ -75,7 +75,7 @@ AGE=$(( (NOW - LAST) / 86400 ))
 mkdir -p "$STATE_DIR" && echo "$NOW" > "$STATE_FILE"
 printf '{"systemMessage":"💡 Tip: Add context references like #file or @workspace to get more accurate, project-specific responses."}'
 `,
-		ps1Script: `# AI Engineering Fluency — Session Reminder: no-context-refs
+		ps1Script: `# Tokenmetrics — Session Reminder: no-context-refs
 $inputData = [Console]::In.ReadToEnd()
 $data = $inputData | ConvertFrom-Json -ErrorAction SilentlyContinue
 if ($data.cwd) { $cwd = $data.cwd } else { $cwd = "" }
@@ -101,7 +101,7 @@ Write-Output '{"systemMessage":"💡 Tip: Add context references like #file or @
 	'no-mcp-config': {
 		event: 'SessionStart',
 		bashScript: `#!/bin/bash
-# AI Engineering Fluency — Session Reminder: no-mcp-config
+# Tokenmetrics — Session Reminder: no-mcp-config
 INPUT=$(cat)
 CWD=$(echo "$INPUT" | grep -o '"cwd":"[^"]*"' | cut -d'"' -f4)
 WORKSPACE_HASH=$(echo "$CWD" | cksum | cut -d' ' -f1)
@@ -119,7 +119,7 @@ AGE=$(( (NOW - LAST) / 86400 ))
 mkdir -p "$STATE_DIR" && echo "$NOW" > "$STATE_FILE"
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"No MCP server configuration (.vscode/mcp.json) detected. MCP servers can connect Copilot to databases, APIs, and external tools."}}'
 `,
-		ps1Script: `# AI Engineering Fluency — Session Reminder: no-mcp-config
+		ps1Script: `# Tokenmetrics — Session Reminder: no-mcp-config
 $inputData = [Console]::In.ReadToEnd()
 $data = $inputData | ConvertFrom-Json -ErrorAction SilentlyContinue
 if ($data.cwd) { $cwd = $data.cwd } else { $cwd = "" }

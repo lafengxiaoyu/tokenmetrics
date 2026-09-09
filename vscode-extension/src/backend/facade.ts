@@ -623,7 +623,7 @@ export class BackendFacade {
   }
 
   public async toggleBackendWorkspaceMachineNameSync(): Promise<void> {
-    const config = vscode.workspace.getConfiguration("aiEngineeringFluency");
+    const config = vscode.workspace.getConfiguration("tokenmetrics");
     const current = config.get<boolean>(
       "backend.shareWorkspaceMachineNames",
       false,
@@ -641,7 +641,7 @@ export class BackendFacade {
   }
 
   private getShareWithTeamSuffix(): string {
-    const config = vscode.workspace.getConfiguration("aiEngineeringFluency");
+    const config = vscode.workspace.getConfiguration("tokenmetrics");
     const enabled = config.get<boolean>("backend.shareWithTeam", false);
     return enabled
       ? ""
@@ -689,7 +689,7 @@ export class BackendFacade {
         "Extension context is unavailable; cannot update configuration.",
       );
     }
-    const config = vscode.workspace.getConfiguration("aiEngineeringFluency");
+    const config = vscode.workspace.getConfiguration("tokenmetrics");
     await Promise.all([
       ...this.buildSharingConfigUpdates(config, next),
       ...this.buildAzureConfigUpdates(config, next),

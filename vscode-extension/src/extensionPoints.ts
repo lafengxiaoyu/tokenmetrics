@@ -9,7 +9,7 @@ export interface ExtensionPointButton {
 }
 
 /**
- * Public API exported by the AI Engineering Fluency extension.
+ * Public API exported by the Tokenmetrics extension.
  * Companion extensions can acquire this via `vscode.extensions.getExtension(...).exports`.
  */
 export interface AiFluencyExtensionApi {
