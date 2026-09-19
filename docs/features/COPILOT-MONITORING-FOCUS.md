@@ -66,6 +66,14 @@ The primary experience should converge on four areas:
   high-token/low-output detectors.
 - Avoid ranking people or claiming productivity from token counts alone.
 
+First additive slice implemented in the Usage Analysis **Insights** tab:
+
+- One-shot edit rate and detected rework rate as primary efficiency signals.
+- Tool error rate and cache reuse as diagnostic signals.
+- Peak context pressure as a context-risk guardrail.
+- Minimum sample sizes and explicit “Not enough data” states; no composite
+  productivity score and no change to the underlying token/session parsers.
+
 ### Phase 4 — Organization readiness
 
 - Document exactly which local files are read and which fields may be synced.

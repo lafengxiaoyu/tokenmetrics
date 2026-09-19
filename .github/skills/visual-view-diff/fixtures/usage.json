@@ -840,6 +840,18 @@
   },
   "locale": "en-US",
   "lastUpdated": "2026-03-14T09:30:00.000Z",
+  "tokenEfficiency": {
+    "periodDays": 30,
+    "sessions": 247,
+    "modelCallsCovered": 1420,
+    "metrics": [
+      { "id": "oneShotEditRate", "value": 0.78, "numerator": 312, "denominator": 400, "minimumSample": 3, "status": "healthy" },
+      { "id": "reworkRate", "value": 0.14, "numerator": 84, "denominator": 600, "minimumSample": 5, "status": "watch" },
+      { "id": "toolErrorRate", "value": 0.06, "numerator": 89, "denominator": 1483, "minimumSample": 10, "status": "watch" },
+      { "id": "cacheReuseRate", "value": 0.43, "numerator": 3200000, "denominator": 7500000, "minimumSample": 1, "status": "informational" },
+      { "id": "contextPressure", "value": 0.72, "numerator": 144000, "denominator": 200000, "minimumSample": 1, "status": "watch" }
+    ]
+  },
   "agenticDailyTrend": [
     {
       "date": "2026-03-08",

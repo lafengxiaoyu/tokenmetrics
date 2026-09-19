@@ -868,6 +868,32 @@ correctionReport?: CorrectionReport;
  * cluster reached the minimum size.
  */
 repeatedTasks?: RepeatedTaskReport;
+/** Explainable 30-day efficiency signals derived from existing usage aggregates. */
+tokenEfficiency?: TokenEfficiencySummary;
+}
+
+export type TokenEfficiencyMetricId =
+  | 'oneShotEditRate'
+  | 'reworkRate'
+  | 'toolErrorRate'
+  | 'cacheReuseRate'
+  | 'contextPressure';
+
+export interface TokenEfficiencyMetric {
+  id: TokenEfficiencyMetricId;
+  /** Normalized ratio in the range 0..1, or null when coverage is insufficient. */
+  value: number | null;
+  numerator: number;
+  denominator: number;
+  minimumSample: number;
+  status: 'healthy' | 'watch' | 'attention' | 'informational' | 'unavailable';
+}
+
+export interface TokenEfficiencySummary {
+  periodDays: 30;
+  sessions: number;
+  modelCallsCovered: number;
+  metrics: TokenEfficiencyMetric[];
 }
 
 /** One day's worth of multi-agent/delegation signal, used to render a trend sparkline. */

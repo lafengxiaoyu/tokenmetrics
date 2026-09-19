@@ -209,6 +209,7 @@ import {
   accumulateDailyModelCounters as _accumulateDailyModelCounters,
   buildSessionEfficiencyAttribution as _buildSessionEfficiencyAttribution,
 } from '../../src/modelEfficiency';
+import { buildTokenEfficiencySummary as _buildTokenEfficiencySummary } from '../../src/tokenEfficiencyInsights';
 
 // --- Efficiency analysis ---
 import {
@@ -4568,6 +4569,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 			correctionReport,
 			repeatedTasks,
 			curationAnalysis: this.computeCurationAnalysis(last30DaysStats),
+			tokenEfficiency: _buildTokenEfficiencySummary(last30DaysStats),
 			agenticDailyTrend,
 			autoCompactionsLast7Days,
 		};
@@ -8056,6 +8058,7 @@ private computeFallbackDailyRollup(
 			correctionReport: analysisStats.correctionReport ?? null,
 			repeatedTasks: analysisStats.repeatedTasks ?? null,
 			curationAnalysis: analysisStats.curationAnalysis ?? null,
+			tokenEfficiency: analysisStats.tokenEfficiency,
 			copilotApiBalance: this._buildCopilotApiBalance(),
 			monthBillingGroupCosts: this.lastDetailedStats?.month.billingGroupCosts ?? null,
 			hideAutomaticToolCalls: this.getHideAutomaticToolCallsSetting(),
@@ -12381,6 +12384,7 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
       insights: this.buildCurrentInsights(stats),
       correctionReport: stats.correctionReport ?? null,
       curationAnalysis: stats.curationAnalysis ?? null,
+      tokenEfficiency: stats.tokenEfficiency,
       sessionColumnSettings,
       copilotApiBalance: this._buildCopilotApiBalance(),
       monthBillingGroupCosts: this.lastDetailedStats?.month.billingGroupCosts ?? null,

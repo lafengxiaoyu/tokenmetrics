@@ -111,6 +111,23 @@ type EvaluatedInsight = {
 	allowToast?: boolean;
 };
 
+type TokenEfficiencyMetricId = 'oneShotEditRate' | 'reworkRate' | 'toolErrorRate' | 'cacheReuseRate' | 'contextPressure';
+type TokenEfficiencyStatus = 'healthy' | 'watch' | 'attention' | 'informational' | 'unavailable';
+type TokenEfficiencyMetric = {
+	id: TokenEfficiencyMetricId;
+	value: number | null;
+	numerator: number;
+	denominator: number;
+	minimumSample: number;
+	status: TokenEfficiencyStatus;
+};
+type TokenEfficiencySummary = {
+	periodDays: 30;
+	sessions: number;
+	modelCallsCovered: number;
+	metrics: TokenEfficiencyMetric[];
+};
+
 // ── Correction-moment types ─────────────────────────────────────────────────
 // These mirror the interfaces in src/types.ts (CorrectionMoment etc.) and must
 // be kept in sync manually — the webview bundle cannot import them directly.
@@ -210,6 +227,7 @@ type UsageAnalysisStats = {
 	/** When true (default), rows tagged "auto" are hidden from the Tool Usage tables so only intentional tool calls are shown. */
 	hideAutomaticToolCalls?: boolean;
 	insights?: EvaluatedInsight[];
+	tokenEfficiency?: TokenEfficiencySummary;
 	/** Correction-moment report: per-repo, over each repo's most recent sessions. Undefined while the report is still loading, null when no moments were detected. */
 	correctionReport?: CorrectionReport | null;
 	/** Repeated-task candidates (skill suggestions). Null when no repeated task was found. */
@@ -1851,6 +1869,39 @@ function applySessionSummaries(sanitized: UsageAnalysisStats, raw: any): void {
 	}
 }
 
+function sanitizeTokenEfficiency(raw: unknown): TokenEfficiencySummary | undefined {
+	if (!raw || typeof raw !== 'object') { return undefined; }
+	const candidate = raw as Partial<TokenEfficiencySummary>;
+	const validIds = new Set<TokenEfficiencyMetricId>(['oneShotEditRate', 'reworkRate', 'toolErrorRate', 'cacheReuseRate', 'contextPressure']);
+	const validStatuses = new Set<TokenEfficiencyStatus>(['healthy', 'watch', 'attention', 'informational', 'unavailable']);
+	if (!Array.isArray(candidate.metrics)) { return undefined; }
+	const metrics = candidate.metrics.flatMap((entry): TokenEfficiencyMetric[] => {
+		if (!entry || typeof entry !== 'object') { return []; }
+		const item = entry as Partial<TokenEfficiencyMetric>;
+		if (!item.id || !validIds.has(item.id) || !item.status || !validStatuses.has(item.status)) { return []; }
+		const value = item.value === null ? null : Number(item.value);
+		const numerator = Number(item.numerator);
+		const denominator = Number(item.denominator);
+		const minimumSample = Number(item.minimumSample);
+		if ((value !== null && !Number.isFinite(value)) || !Number.isFinite(numerator) || !Number.isFinite(denominator) || !Number.isFinite(minimumSample)) { return []; }
+		return [{
+			id: item.id,
+			value: value === null ? null : Math.max(0, Math.min(1, value)),
+			numerator: Math.max(0, numerator),
+			denominator: Math.max(0, denominator),
+			minimumSample: Math.max(1, minimumSample),
+			status: item.status,
+		}];
+	});
+	if (metrics.length === 0) { return undefined; }
+	return {
+		periodDays: 30,
+		sessions: Math.max(0, Number(candidate.sessions) || 0),
+		modelCallsCovered: Math.max(0, Number(candidate.modelCallsCovered) || 0),
+		metrics,
+	};
+}
+
 function sanitizeStats(raw: any): UsageAnalysisStats | null {
 	if (!raw || typeof raw !== 'object') {
 		traceCurationOnce('sanitize-invalid-root', 'sanitizeStats.invalidRoot');
@@ -1895,6 +1946,7 @@ function sanitizeStats(raw: any): UsageAnalysisStats | null {
 		if (Array.isArray(raw.insights)) {
 			sanitized.insights = sanitizeInsights(raw.insights);
 		}
+		sanitized.tokenEfficiency = sanitizeTokenEfficiency(raw.tokenEfficiency);
 
 		sanitizeOptionalReports(sanitized, raw);
 
@@ -3462,7 +3514,49 @@ function buildInsightCardHtml(insight: EvaluatedInsight): string {
 		</div>`;
 }
 
-function buildInsightsTabPanelHtml(insights: EvaluatedInsight[]): string {
+const TOKEN_EFFICIENCY_LABELS: Record<TokenEfficiencyMetricId, { label: string; description: string; evidenceUnit: string }> = {
+	oneShotEditRate: { label: 'One-shot edit rate', description: 'Edit turns completed without a detected retry or self-correction.', evidenceUnit: 'edit turns' },
+	reworkRate: { label: 'Rework rate', description: 'Detected edit retries and self-corrections per edit tool call.', evidenceUnit: 'edit calls' },
+	toolErrorRate: { label: 'Tool error rate', description: 'Recorded tool errors as a share of tool calls.', evidenceUnit: 'tool calls' },
+	cacheReuseRate: { label: 'Cache reuse', description: 'Cached-read tokens as a share of observed input tokens. Informational, not a quality score.', evidenceUnit: 'input tokens' },
+	contextPressure: { label: 'Peak context pressure', description: 'Highest observed context fill relative to its selected limit.', evidenceUnit: 'context tokens' },
+};
+
+function buildTokenEfficiencyMetricHtml(metric: TokenEfficiencyMetric): string {
+	const meta = TOKEN_EFFICIENCY_LABELS[metric.id];
+	const colors: Record<TokenEfficiencyStatus, string> = {
+		healthy: 'var(--vscode-testing-iconPassed, #4ade80)',
+		watch: 'var(--vscode-editorWarning-foreground, #fbbf24)',
+		attention: 'var(--vscode-testing-iconFailed, #f87171)',
+		informational: 'var(--vscode-textLink-foreground, #60a5fa)',
+		unavailable: 'var(--text-secondary)',
+	};
+	const value = metric.value === null ? 'Not enough data' : formatPercent(metric.value * 100);
+	const evidence = metric.value === null
+		? `Needs at least ${formatNumber(metric.minimumSample)} ${escapeHtml(meta.evidenceUnit)}`
+		: `${formatNumber(metric.numerator)} / ${formatNumber(metric.denominator)} ${escapeHtml(meta.evidenceUnit)}`;
+	return `<div style="padding:14px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-tertiary); min-width:180px;">
+		<div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">${escapeHtml(meta.label)}</div>
+		<div style="font-size:22px; font-weight:700; color:${colors[metric.status]}; margin-bottom:6px;">${value}</div>
+		<div style="font-size:11px; color:var(--text-secondary); line-height:1.4;">${escapeHtml(meta.description)}</div>
+		<div style="font-size:10px; color:var(--text-secondary); opacity:0.8; margin-top:8px;">${evidence}</div>
+	</div>`;
+}
+
+function buildTokenEfficiencySummaryHtml(summary: TokenEfficiencySummary | undefined): string {
+	if (!summary) { return ''; }
+	return `<div style="margin-bottom:24px;">
+		<div style="font-size:12px; font-weight:600; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.05em; margin-bottom:10px;">Token efficiency signals · last ${summary.periodDays} days</div>
+		<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;">
+			${summary.metrics.map(buildTokenEfficiencyMetricHtml).join('')}
+		</div>
+		<div style="font-size:11px; color:var(--text-secondary); margin-top:10px; line-height:1.45;">
+			Based on ${formatNumber(summary.sessions)} sessions and ${formatNumber(summary.modelCallsCovered)} model-attributed turns where available. These are directional diagnostics, not a productivity score; unavailable signals never count against you.
+		</div>
+	</div>`;
+}
+
+function buildInsightsTabPanelHtml(insights: EvaluatedInsight[], tokenEfficiency?: TokenEfficiencySummary): string {
 	const applicable = insights.filter(i => i.status !== 'dismissed');
 	const newInsights = applicable.filter(i => i.status === 'new');
 	const otherInsights = applicable.filter(i => i.status !== 'new' && i.status !== 'done');
@@ -3491,6 +3585,7 @@ function buildInsightsTabPanelHtml(insights: EvaluatedInsight[]): string {
 					Personalized tips based on your usage patterns. Tips are data-driven — they only appear when relevant to how you code with AI.
 				</div>
 				<div id="insights-container" style="margin-top:16px;">
+					${buildTokenEfficiencySummaryHtml(tokenEfficiency)}
 					${forYouSection}
 					${allSection}
 				</div>
@@ -3937,7 +4032,7 @@ function buildUsageRootHtml(
 			${safeSectionHtml('Workspace Health', () => buildHealthTabPanelHtml(customizationHtml, stats))}
 			${safeSectionHtml('Repository PRs & Cloud Agent', () => buildReposAndAgentTabPanelsHtml())}
 			${safeSectionHtml('Worktrees', () => buildWorktreesTabPanelHtml())}
-			${safeSectionHtml('Insights', () => buildInsightsTabPanelHtml(stats.insights ?? []))}
+			${safeSectionHtml('Insights', () => buildInsightsTabPanelHtml(stats.insights ?? [], stats.tokenEfficiency))}
 			${safeSectionHtml('Corrections', () => buildCorrectionsTabPanelHtml(stats.correctionReport))}
 			<div class="footer">
 				Last updated: ${escapeHtml(new Date(stats.lastUpdated).toLocaleString())} · Updates every 5 minutes
