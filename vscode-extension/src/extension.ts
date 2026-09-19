@@ -210,6 +210,7 @@ import {
   buildSessionEfficiencyAttribution as _buildSessionEfficiencyAttribution,
 } from '../../src/modelEfficiency';
 import { buildTokenEfficiencySummary as _buildTokenEfficiencySummary } from '../../src/tokenEfficiencyInsights';
+import { aggregateHourlyActivity as _aggregateHourlyActivity, buildHourlyInteractionBuckets as _buildHourlyInteractionBuckets } from '../../src/hourlyActivity';
 
 // --- Efficiency analysis ---
 import {
@@ -522,10 +523,8 @@ function isUsageAnalysisTab(tab: string): tab is UsageAnalysisTab {
 
 class CopilotTokenTracker implements vscode.Disposable {
 	// Cache version - increment this when making changes that require cache invalidation.
-	// Correction detection now requires corroboration for agent-self-correction moments and
-	// adds intensity/escalation fields to user-correction moments — old cached moments were
-	// computed under the previous (uncorroborated) logic and lack these fields.
-	private static readonly CACHE_VERSION = 71;
+	// Hourly activity requires exact per-request timestamp buckets on cached sessions.
+	private static readonly CACHE_VERSION = 72;
 	/** Initial stats should not wait indefinitely for one inaccessible or stalled session. */
 	private static readonly SESSION_PRELOAD_TIMEOUT_MS = 15_000;
 	// Maximum length for displaying workspace IDs in diagnostics/customization matrix
@@ -5794,6 +5793,7 @@ class CopilotTokenTracker implements vscode.Disposable {
 		lastInteraction: string | null;
 		dailyInteractions: { [localDayKey: string]: number };
 		dailyFractions?: Record<string, number>;
+		hourlyInteractions?: Record<string, number[]>;
 		workspacePath?: string;
 	}> {
 		let title: string | undefined;
@@ -5847,7 +5847,11 @@ class CopilotTokenTracker implements vscode.Disposable {
 			dailyInteractions[dayKey] = (dailyInteractions[dayKey] || 0) + 1;
 		}
 
-		return { title, firstInteraction, lastInteraction, dailyInteractions, workspacePath };
+		return {
+			title, firstInteraction, lastInteraction, dailyInteractions,
+			hourlyInteractions: _buildHourlyInteractionBuckets(requestTimestamps),
+			workspacePath,
+		};
 	}
 
 	/**
@@ -6085,7 +6089,7 @@ if (session.toolCalls) { usageAnalysis.toolCalls = session.toolCalls; }
 		mtime: number,
 		fileSize: number,
 		usageAnalysis: SessionUsageAnalysis,
-		sessionMeta: { title?: string; firstInteraction: string | null; lastInteraction: string | null; workspacePath?: string },
+		sessionMeta: { title?: string; firstInteraction: string | null; lastInteraction: string | null; hourlyInteractions?: Record<string, number[]>; workspacePath?: string },
 		resolvedActualTokens: number | undefined,
 		finalCacheReadTokens: number | undefined,
 		debugLogTokens: { inputTokens: number; outputTokens: number; modelTurns?: number; copilotNanoAiu?: number } | null | undefined,
@@ -6107,7 +6111,8 @@ if (session.toolCalls) { usageAnalysis.toolCalls = session.toolCalls; }
 		return {
 			tokens: tokenResult.tokens, interactions, modelUsage: resolvedModelUsage, mtime, size: fileSize,
 			usageAnalysis, title: sessionMeta.title, firstInteraction: sessionMeta.firstInteraction,
-			lastInteraction: sessionMeta.lastInteraction, actualTokens: resolvedActualTokens,
+			lastInteraction: sessionMeta.lastInteraction, hourlyInteractions: sessionMeta.hourlyInteractions,
+			actualTokens: resolvedActualTokens,
 			taskCategory: usageAnalysis.taskClassification?.primaryCategory ?? taskCategory,
 			taskCategoryShares: usageAnalysis.taskClassification?.categoryShares,
 			...(subAgentCalls > 0 ? { subAgentCalls } : {}),
@@ -12284,12 +12289,15 @@ ${this.getLoadingHtmlBody(nonce, iconUri.toString(), startedAtMs)}
   }
 
   private buildChartData(fullDailyStats: DailyTokenStats[]): ChartDataPayload {
-    return _buildChartData(fullDailyStats, {
-      getRepoDisplayName: _getRepoDisplayName,
-      calculateEstimatedCost: (modelUsage, pricingSource) => _calculateEstimatedCost(modelUsage, this.modelPricing, pricingSource),
-      backendConfigured: this.isBackendConfigured(),
-      compactNumbers: this.getCompactNumbersSetting(),
-    });
+    return {
+      ..._buildChartData(fullDailyStats, {
+        getRepoDisplayName: _getRepoDisplayName,
+        calculateEstimatedCost: (modelUsage, pricingSource) => _calculateEstimatedCost(modelUsage, this.modelPricing, pricingSource),
+        backendConfigured: this.isBackendConfigured(),
+        compactNumbers: this.getCompactNumbersSetting(),
+      }),
+      hourlyActivity: _aggregateHourlyActivity(this.cacheManager.cache.values()),
+    };
   }
 
   private getChartHtml(

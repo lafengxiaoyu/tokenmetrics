@@ -63,6 +63,13 @@ type ChartPeriodData = {
 
 type ChartPeriod = import('./projectionUtils').ChartPeriod;
 
+type HourlyActivityData = {
+	days: Array<{ date: string; hours: number[] }>;
+	coveredSessions: number;
+	totalInteractions: number;
+	timeZone: string;
+};
+
 type InitialChartData = {
 	labels: string[];
 	tokensData: number[];
@@ -88,6 +95,7 @@ type InitialChartData = {
 	initialMetric?: 'tokens' | 'output' | 'cost' | 'sessions';
 	initialSplit?: 'total' | 'model' | 'editor' | 'repository' | 'language' | 'provider' | 'task' | 'taskCategory';
 	monthlyBudget?: number;
+	hourlyActivity?: HourlyActivityData;
 	periods?: {
 		day: ChartPeriodData;
 		week: ChartPeriodData;
@@ -542,11 +550,12 @@ function renderLayout(data: InitialChartData): void {
 	chartShell.append(buildChartControls(data), canvasWrap, heatmapContainer);
 	const chartSection = el('div', 'section');
 	chartSection.append(chartSectionHeader, chartShell);
+	const hourlyActivitySection = buildHourlyActivitySection(data);
 	const footer = el('div', 'footer',
 		`${periodMeta.footer} (${periodMeta.aggregationLabel})\nLast updated: ${new Date(data.lastUpdated).toLocaleString()}\nUpdates automatically every 5 minutes.`);
 	footer.id = 'chart-footer';
 	const container = el('div', 'container');
-	container.append(buildChartHeader(data), summarySection, chartSection, footer);
+	container.append(buildChartHeader(data), summarySection, chartSection, hourlyActivitySection, footer);
 	root.append(themeStyle, style, container);
 	wireInteractions(data);
 	void setupChart(canvas, data);
@@ -832,6 +841,7 @@ async function switchTimeWindow(timeWindow: ChartTimeWindow, data: InitialChartD
 	vscode.postMessage({ command: 'setTimeWindowPreference', timeWindow });
 	saveWebviewState();
 	updateSummaryCards(data);
+	refreshHourlyActivityHeatmap(data);
 	await reinitChart(data);
 }
 
@@ -1296,6 +1306,100 @@ function buildTaskCategoryViewConfig(period: ChartPeriodData, baseOptions: Retur
 			}
 		}
 	} as ChartConfig;
+}
+
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function getHourlyActivityDays(data: InitialChartData): Array<{ date: string; hours: number[] }> {
+	const startKey = getTimeWindowStartDayKey(currentTimeWindow, new Date());
+	const todayKey = getTimeWindowStartDayKey('today', new Date());
+	return (data.hourlyActivity?.days ?? []).filter(day => day.date >= startKey && day.date <= todayKey);
+}
+
+function getVisibleHourlyInteractionCount(data: InitialChartData): number {
+	return getHourlyActivityDays(data).reduce(
+		(total, day) => total + day.hours.reduce((sum, count) => sum + Math.max(0, Number(count) || 0), 0),
+		0,
+	);
+}
+
+function getHourlyCoverageText(data: InitialChartData): string {
+	return `${getVisibleHourlyInteractionCount(data).toLocaleString()} timestamped requests in this time window. ${(data.hourlyActivity?.coveredSessions ?? 0).toLocaleString()} sessions provide exact request timestamps overall; formats without them are omitted rather than estimated.`;
+}
+
+function buildHourlyActivityGrid(data: InitialChartData): HTMLElement {
+	const days = getHourlyActivityDays(data);
+	const grid = Array.from({ length: 7 }, () => Array<number>(24).fill(0));
+	for (const day of days) {
+		const date = new Date(`${day.date}T00:00:00`);
+		if (Number.isNaN(date.getTime()) || !Array.isArray(day.hours)) { continue; }
+		const weekdayIndex = (date.getDay() + 6) % 7;
+		for (let hour = 0; hour < 24; hour++) {
+			grid[weekdayIndex][hour] += Math.max(0, Number(day.hours[hour]) || 0);
+		}
+	}
+
+	const wrap = el('div', 'hourly-heatmap-wrap');
+	const maxValue = Math.max(0, ...grid.flat());
+	if (maxValue === 0) {
+		wrap.append(el('div', 'heatmap-empty', 'No exact request timestamps are available for this time window. Existing charts are unaffected.'));
+		return wrap;
+	}
+
+	const table = document.createElement('table');
+	table.className = 'hourly-heatmap-table';
+	const thead = document.createElement('thead');
+	const header = document.createElement('tr');
+	header.append(document.createElement('th'));
+	for (let hour = 0; hour < 24; hour++) {
+		const th = document.createElement('th');
+		th.textContent = hour % 3 === 0 ? String(hour).padStart(2, '0') : '';
+		th.title = `${String(hour).padStart(2, '0')}:00–${String((hour + 1) % 24).padStart(2, '0')}:00`;
+		header.append(th);
+	}
+	thead.append(header);
+	table.append(thead);
+
+	const tbody = document.createElement('tbody');
+	grid.forEach((hours, weekdayIndex) => {
+		const row = document.createElement('tr');
+		const label = document.createElement('th');
+		label.textContent = WEEKDAY_LABELS[weekdayIndex];
+		row.append(label);
+		hours.forEach((value, hour) => {
+			const cell = document.createElement('td');
+			cell.style.backgroundColor = getHeatmapColor(value, maxValue);
+			cell.title = `${WEEKDAY_LABELS[weekdayIndex]} ${String(hour).padStart(2, '0')}:00 · ${value.toLocaleString()} request${value === 1 ? '' : 's'}`;
+			cell.setAttribute('aria-label', cell.title);
+			row.append(cell);
+		});
+		tbody.append(row);
+	});
+	table.append(tbody);
+	wrap.append(table);
+	return wrap;
+}
+
+function buildHourlyActivitySection(data: InitialChartData): HTMLElement {
+	const section = el('div', 'section hourly-activity-section');
+	section.id = 'hourly-activity-section';
+	section.append(iconHeading('h3', 'clock', '24-hour Activity Heatmap'));
+	const subtitle = el('div', 'hourly-heatmap-subtitle', `Requests by weekday and local hour · ${data.hourlyActivity?.timeZone ?? 'local time'} · follows the selected time window`);
+	const content = el('div');
+	content.id = 'hourly-activity-content';
+	content.append(buildHourlyActivityGrid(data));
+	const coverage = el('div', 'hourly-heatmap-coverage', getHourlyCoverageText(data));
+	coverage.id = 'hourly-activity-coverage';
+	section.append(subtitle, content, coverage);
+	return section;
+}
+
+function refreshHourlyActivityHeatmap(data: InitialChartData): void {
+	const content = document.getElementById('hourly-activity-content');
+	if (!content) { return; }
+	content.replaceChildren(buildHourlyActivityGrid(data));
+	const coverage = document.getElementById('hourly-activity-coverage');
+	if (coverage) { coverage.textContent = getHourlyCoverageText(data); }
 }
 
 function getHeatmapColor(value: number, maxValue: number): string {

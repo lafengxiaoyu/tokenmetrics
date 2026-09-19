@@ -323,6 +323,24 @@ export interface ChartDataPayload {
    */
   periodsReady?: boolean;
   hasLocData?: boolean;
+  /** Exact request activity by local day/hour for the 7×24 Chart heatmap. */
+  hourlyActivity?: HourlyActivityData;
+}
+
+export type HourlyInteractionBuckets = Record<string, number[]>;
+
+export interface HourlyActivityDay {
+  /** Local-calendar key in YYYY-MM-DD form. */
+  date: string;
+  /** 24 interaction counts indexed by local hour (0..23). */
+  hours: number[];
+}
+
+export interface HourlyActivityData {
+  days: HourlyActivityDay[];
+  coveredSessions: number;
+  totalInteractions: number;
+  timeZone: string;
 }
 
 /** Per-UTC-day token/interaction breakdown for a single session. Used for accurate daily stats. */
@@ -350,6 +368,8 @@ export interface SessionFileCache {
   taskCategoryShares?: TaskCategoryBreakdown;
   firstInteraction?: string | null; // ISO timestamp of first interaction
   lastInteraction?: string | null; // ISO timestamp of last interaction
+  /** Exact user-request counts by local calendar day and hour; absent when the format exposes no request timestamps. */
+  hourlyInteractions?: HourlyInteractionBuckets;
   title?: string; // Session title (customTitle from session file)
   repository?: string; // Git remote origin URL for the session's workspace
   /**
