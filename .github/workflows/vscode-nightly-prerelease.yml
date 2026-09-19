@@ -1,8 +1,8 @@
-name: VS Code Nightly Pre-Release
+name: VS Code Pre-Release (Manual)
 
 on:
-  schedule:
-    - cron: '0 2 * * *'  # 2am UTC daily
+  # Automatic nightly publishing is intentionally disabled for this fork until
+  # Tokenmetrics has its own Marketplace/Open VSX publishers and release tokens.
   workflow_dispatch:
     inputs:
       force:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   nightly-pre-release:
-    name: Nightly Pre-Release
+    name: Manual Pre-Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
